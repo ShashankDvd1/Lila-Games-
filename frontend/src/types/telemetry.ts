@@ -3,6 +3,7 @@ export interface TrajectoryPoint {
   px: number;
   py: number;
   elevation: number;
+  heading_deg?: number;
 }
 
 export interface PlayerJourney {
@@ -19,6 +20,55 @@ export interface EventMarker {
   px: number;
   py: number;
   elevation: number;
+  loot_rarity?: 'Common' | 'Rare' | 'Epic' | 'Legendary';
+}
+
+export interface CombatEngagement {
+  t: number;
+  killer_id: string;
+  killer_is_bot: boolean;
+  killer_px: number;
+  killer_py: number;
+  victim_id: string;
+  victim_is_bot: boolean;
+  victim_px: number;
+  victim_py: number;
+  distance_meters: number;
+}
+
+export interface POIMetric {
+  id: string;
+  name: string;
+  center_px: number;
+  center_py: number;
+  radius_px: number;
+  color: string;
+  total_visits: number;
+  loot_count: number;
+  kill_count: number;
+}
+
+export interface ExtractionZone {
+  id: string;
+  name: string;
+  center_px: number;
+  center_py: number;
+  radius_px: number;
+}
+
+export interface SurvivalCurvePoint {
+  t: number;
+  alive_humans: number;
+  alive_bots: number;
+  total_alive: number;
+}
+
+export interface StormRingConfig {
+  center_px: number;
+  center_py: number;
+  initial_radius_px: number;
+  final_radius_px: number;
+  collapse_duration_seconds: number;
 }
 
 export interface MatchSummary {
@@ -42,6 +92,12 @@ export interface MatchPayload {
   bot_count: number;
   players: PlayerJourney[];
   events: EventMarker[];
+  combat_engagements?: CombatEngagement[];
+  survival_curve?: SurvivalCurvePoint[];
+  storm_ring?: StormRingConfig;
+  pois?: POIMetric[];
+  extractions?: ExtractionZone[];
+  elevation_bounds?: { min: number; max: number };
 }
 
 export interface HeatmapPoint {
@@ -52,27 +108,20 @@ export interface HeatmapPoint {
 
 export interface HeatmapResponse {
   map_id: string;
-  mode: 'KillZones' | 'DeathZones' | 'Traffic';
+  mode: string;
   points: HeatmapPoint[];
 }
 
-export interface LayerFilters {
-  showHumans: boolean;
-  showBots: boolean;
-  showKills: boolean;
-  showStorm: boolean;
-  showLoot: boolean;
+export interface HealthResponse {
+  status: string;
+  engine: string;
+  total_events: number;
+  total_matches: number;
+  total_players: number;
 }
 
-export interface MapConfig {
-  scale: number;
-  origin_x: number;
-  origin_z: number;
-  displayName: string;
+export interface MacroPlayerPath {
+  user_id: string;
+  is_bot: boolean;
+  points: [number, number][];
 }
-
-export const MAP_CONFIGS: Record<string, MapConfig> = {
-  AmbroseValley: { scale: 900.0, origin_x: -370.0, origin_z: -473.0, displayName: 'Ambrose Valley' },
-  GrandRift: { scale: 581.0, origin_x: -290.0, origin_z: -290.0, displayName: 'Grand Rift' },
-  Lockdown: { scale: 1000.0, origin_x: -500.0, origin_z: -500.0, displayName: 'Lockdown' },
-};

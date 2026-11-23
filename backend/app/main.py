@@ -1,13 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from app.db import TelemetryDB
 from app.models import MatchSummary, MatchPayload, HeatmapResponse, HealthResponse
 
 app = FastAPI(
     title="LILA BLACK Telemetry API",
     description="High-performance backend analytical query engine for Player Journey Visualization",
-    version="1.0.0"
+    version="1.1.0"
 )
 
 # Enable CORS for Vercel edge deployment and local dev
@@ -58,3 +58,11 @@ def get_heatmap(
         "mode": mode,
         "points": points
     }
+
+@app.get("/api/macro-paths/{map_id}")
+def get_macro_paths(
+    map_id: str,
+    limit: int = Query(25, ge=1, le=100, description="Number of matches to sample for macro rivers")
+):
+    """Returns multi-match macro trajectories for cohort flow visualization."""
+    return db.get_macro_paths(map_id=map_id, limit_matches=limit)

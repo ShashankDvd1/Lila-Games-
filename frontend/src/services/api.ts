@@ -1,70 +1,62 @@
-import type { MatchSummary, MatchPayload, HeatmapResponse } from '../types/telemetry';
+import type { MatchSummary, MatchPayload, HeatmapResponse, HealthResponse, MacroPlayerPath } from '../types/telemetry';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
-export async function checkBackendHealth(): Promise<{ online: boolean; status?: any }> {
+const fetchWithTimeout = async (url: string, timeoutMs: number = 4000): Promise<Response> => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    return { online: true, status: data };
-  } catch {
-    return { online: false };
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
   }
-}
+};
 
-export async function fetchMatches(date?: string, mapId?: string): Promise<MatchSummary[]> {
+export const checkHealth = async (): Promise<HealthResponse> => {
+  const res = await fetchWithTimeout(`${API_BASE_URL}/api/health`, 3000);
+  if (!res.ok) throw new Error('API offline');
+  return res.json();
+};
+
+export const fetchMatches = async (date?: string, mapId?: string): Promise<MatchSummary[]> => {
   const params = new URLSearchParams();
   if (date) params.append('date', date);
   if (mapId) params.append('map_id', mapId);
 
-  try {
-    const res = await fetch(`${API_BASE}/api/matches?${params.toString()}`, {
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) throw new Error('Failed to fetch matches');
-    return await res.json();
-  } catch {
-    console.warn('Backend sleeping or offline. Using static match list fallback.');
-    return [
-      {
-        match_id: 'd3a3297e-2cdf-4a49-8450-09119b91a779.nakama-0',
-        map_id: 'AmbroseValley',
-        date: 'February_10',
-        total_players: 14,
-        bot_count: 13,
-        human_count: 1,
-        total_events: 1097,
-        duration_seconds: 795.0,
-      },
-    ];
-  }
-}
+  const res = await fetchWithTimeout(`${API_BASE_URL}/api/matches?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch matches');
+  return res.json();
+};
 
-export async function fetchMatchDetail(matchId: string): Promise<{ data: MatchPayload; isFallback: boolean }> {
+export const fetchMatch = async (matchId: string): Promise<MatchPayload> => {
   try {
-    const res = await fetch(`${API_BASE}/api/matches/${matchId}`, {
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) throw new Error('API non-200');
-    const data = await res.json();
-    return { data, isFallback: false };
-  } catch {
-    console.warn('Render API unavailable. Loading pre-bundled Ambrose Valley demo match...');
-    const fallbackRes = await fetch('/demo/ambrose_valley_demo.json');
-    const data = await fallbackRes.json();
-    return { data, isFallback: true };
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/matches/${matchId}`, 5000);
+    if (!res.ok) throw new Error('Failed to fetch match');
+    return res.json();
+  } catch (err) {
+    console.warn(`[API] Remote fetch for ${matchId} failed, falling back to bundled demo match.`, err);
+    const demoRes = await fetch('/demo/ambrose_valley_demo.json');
+    if (!demoRes.ok) throw new Error('Both API and offline demo fallback failed');
+    return demoRes.json();
   }
-}
+};
 
-export async function fetchHeatmap(mapId: string, mode: string): Promise<HeatmapResponse> {
+export const fetchHeatmap = async (mapId: string, mode: string): Promise<HeatmapResponse> => {
+  const res = await fetchWithTimeout(`${API_BASE_URL}/api/heatmaps/${mapId}?mode=${mode}`);
+  if (!res.ok) throw new Error('Failed to fetch heatmap');
+  return res.json();
+};
+
+export const fetchMacroPaths = async (mapId: string, limit: number = 25): Promise<MacroPlayerPath[]> => {
   try {
-    const res = await fetch(`${API_BASE}/api/heatmaps/${mapId}?mode=${mode}`, {
-      signal: AbortSignal.timeout(4000),
-    });
-    if (!res.ok) throw new Error('Failed to fetch heatmap');
-    return await res.json();
-  } catch {
-    return { map_id: mapId, mode: mode as any, points: [] };
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/macro-paths/${mapId}?limit=${limit}`, 5000);
+    if (!res.ok) throw new Error('Failed to fetch macro paths');
+    return res.json();
+  } catch (err) {
+    console.warn('[API] Failed to fetch macro paths:', err);
+    return [];
   }
-}
+};
