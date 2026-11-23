@@ -5,6 +5,15 @@
 
 ---
 
+## 🌐 Live Deployments & Key Links
+
+- **Interactive Web App (Vercel):** [https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app](https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app)
+- **Direct Session Deep-Link:** [https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app/?map=AmbroseValley](https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app/?map=AmbroseValley)
+- **Telemetry Analytical API (Render):** [https://lila-games-backend.onrender.com](https://lila-games-backend.onrender.com)
+- **Interactive Parquet Data Loader:** Available directly within the live app via the top-right **`📂 Load Parquet Data`** button.
+
+---
+
 ## 📋 Table of Contents
 1. [Overview & Core Value](#-overview--core-value)
 2. [System Architecture & Tech Stack](#-system-architecture--tech-stack)

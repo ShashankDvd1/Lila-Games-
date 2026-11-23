@@ -7,10 +7,12 @@
 
 ## 🌐 Live Deployments & Key Links
 
-- **Interactive Web App (Vercel):** [https://lila-black-telemetry.vercel.app](https://lila-black-telemetry.vercel.app) *(or connect your Vercel deployment)*
-- **Telemetry Analytical API (Render):** [https://lila-telemetry-api.onrender.com](https://lila-telemetry-api.onrender.com)
+- **Interactive Web App (Vercel):** [https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app](https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app)
+- **Direct Session Deep-Link:** [https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app/?map=AmbroseValley](https://lila-games-git-main-shashank-dwivedi-s-projects.vercel.app/?map=AmbroseValley)
+- **Telemetry Analytical API (Render):** [https://lila-games-backend.onrender.com](https://lila-games-backend.onrender.com)
 - **Architecture Specification (1-Page):** [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - **Level Design Insights (3 Data-Backed Findings):** [`INSIGHTS.md`](INSIGHTS.md)
+- **Comprehensive Documentation & Technical Manual:** [`Docs/README.md`](Docs/README.md)
 
 > ⚡ **Zero Cold-Start Interruption:** Free-tier cloud instances (like Render) sleep after inactivity. This application includes an **instant offline demo fallback** (`/demo/ambrose_valley_demo.json`). When the backend is sleeping, the frontend loads the verified Ambrose Valley match in under 50ms with a non-blocking toast, and seamlessly transitions to live API querying as soon as the backend responds to health checks.
 
@@ -240,7 +242,7 @@ npm run dev
 ### Frontend (`frontend/.env` or `.env.production`)
 | Variable | Default Value | Description |
 | :--- | :--- | :--- |
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Points to the backend FastAPI instance. Set to `https://lila-telemetry-api.onrender.com` in production on Vercel. |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Points to the backend FastAPI instance. Set to `https://lila-games-backend.onrender.com` in production on Vercel. |
 
 ---
 
@@ -254,7 +256,7 @@ npm run dev
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
    - **Plan:** Free
-3. Copy your assigned service URL (e.g., `https://lila-telemetry-api.onrender.com`).
+3. Copy your assigned service URL (e.g., `https://lila-games-backend.onrender.com`).
 
 ### Deploying Frontend to Vercel (Edge App)
 1. In [Vercel Dashboard](https://vercel.com), click **Add New Project** and link your repo.
@@ -264,7 +266,7 @@ npm run dev
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
 3. In **Environment Variables**, add:
-   - `VITE_API_BASE_URL` = `https://lila-telemetry-api.onrender.com`
+   - `VITE_API_BASE_URL` = `https://lila-games-backend.onrender.com`
 4. Click **Deploy**. Vercel will build and distribute the app across its global CDN.
 
 ---
