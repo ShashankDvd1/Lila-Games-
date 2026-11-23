@@ -6,6 +6,9 @@ interface TimelineProps {
   duration: number;
   currentTime: number;
   events?: EventMarker[];
+  outcomeStatus?: 'VICTORY' | 'DEFEAT';
+  outcomeTime?: number;
+  outcomeReason?: string;
   onTimeChange: (time: number) => void;
 }
 
@@ -13,6 +16,9 @@ export const TimelineController: React.FC<TimelineProps> = ({
   duration,
   currentTime,
   events = [],
+  outcomeStatus,
+  outcomeTime,
+  outcomeReason,
   onTimeChange,
 }) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -140,18 +146,36 @@ export const TimelineController: React.FC<TimelineProps> = ({
           </div>
         </div>
 
-        {/* Elapsed / Total Time */}
-        <div className="font-mono text-xs tracking-wider font-semibold text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-700">
-          <span className="text-cyan-400">{formatTime(currentTime)}</span>
-          <span className="text-slate-500 mx-1.5">/</span>
-          <span>{formatTime(duration)}</span>
+        {/* Right side: Outcome Climax Badge + Elapsed/Total Time */}
+        <div className="flex items-center gap-2">
+          {outcomeStatus && outcomeTime !== undefined && (
+            <button
+              onClick={() => onTimeChange(outcomeTime)}
+              title={`Jump to Climax: ${outcomeReason || outcomeStatus} at ${formatTime(outcomeTime)}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition shadow cursor-pointer border ${
+                outcomeStatus === 'VICTORY'
+                  ? 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300'
+                  : 'bg-rose-950/80 hover:bg-rose-900 border-rose-500/50 text-rose-300'
+              }`}
+            >
+              <span>{outcomeStatus === 'VICTORY' ? '🏆' : '💀'}</span>
+              <span>{outcomeStatus === 'VICTORY' ? 'EXTRACTED' : 'KIA'} ({formatTime(outcomeTime)})</span>
+            </button>
+          )}
+
+          {/* Elapsed / Total Time */}
+          <div className="font-mono text-xs tracking-wider font-semibold text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-700">
+            <span className="text-cyan-400">{formatTime(currentTime)}</span>
+            <span className="text-slate-500 mx-1.5">/</span>
+            <span>{formatTime(duration)}</span>
+          </div>
         </div>
       </div>
 
       {/* Lower row: Interactive Scrubber with Event Tick Markers */}
       <div className="relative w-full pt-1 pb-1">
         {/* Event Notches on Timeline */}
-        {duration > 0 && events.length > 0 && (
+        {duration > 0 && (events.length > 0 || outcomeTime !== undefined) && (
           <div className="absolute top-1.5 left-0 right-0 h-2.5 pointer-events-none">
             {events.map((ev, i) => {
               const leftPercent = Math.min(100, Math.max(0, (ev.t / duration) * 100));
@@ -167,6 +191,16 @@ export const TimelineController: React.FC<TimelineProps> = ({
                 />
               );
             })}
+            {outcomeTime !== undefined && (
+              <div
+                style={{
+                  left: `${Math.min(100, Math.max(0, (outcomeTime / duration) * 100))}%`,
+                  backgroundColor: outcomeStatus === 'VICTORY' ? '#10b981' : '#ef4444',
+                }}
+                title={`Climax: ${outcomeStatus} at ${formatTime(outcomeTime)}`}
+                className="absolute w-2 h-3.5 -top-0.5 -translate-x-1/2 rounded-sm shadow-md ring-1 ring-white/70"
+              />
+            )}
           </div>
         )}
 

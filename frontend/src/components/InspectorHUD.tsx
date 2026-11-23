@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Navigation, Users, Crosshair, CloudRain, Package, Shield, Activity } from 'lucide-react';
-import type { PlayerJourney, EventMarker, POIMetric } from '../types/telemetry';
+import React, { useState, useMemo } from 'react';
+import { Navigation, Users, Crosshair, CloudRain, Package, Shield, Activity, Award, Skull } from 'lucide-react';
+import type { PlayerJourney, EventMarker, POIMetric, ExtractionZone } from '../types/telemetry';
 
 interface InspectorHUDProps {
   mapId: string;
@@ -8,6 +8,7 @@ interface InspectorHUDProps {
   players: PlayerJourney[];
   events: EventMarker[];
   pois?: POIMetric[];
+  extractions?: ExtractionZone[];
   currentTime: number;
   selectedPlayerId: string | null;
   onSelectPlayer: (userId: string | null) => void;
@@ -20,6 +21,7 @@ export const InspectorHUD: React.FC<InspectorHUDProps> = ({
   players,
   events,
   pois = [],
+  extractions = [],
   currentTime,
   cursorWorld
 }) => {
@@ -32,9 +34,36 @@ export const InspectorHUD: React.FC<InspectorHUDProps> = ({
   const stormEvents = events.filter(e => e.event === 'KilledByStorm');
   const lootEvents = events.filter(e => e.event === 'Loot');
 
-  // Human player status
+  // Human player status & full match outcome debrief
   const humanPlayer = players.find(p => !p.is_bot);
-  const humanDied = humanPlayer ? events.some(e => e.user_id === humanPlayer.user_id && (e.event === 'Killed' || e.event === 'BotKilled' || e.event === 'KilledByStorm')) : false;
+  const humanDeathEvent = humanPlayer 
+    ? events.find(e => e.user_id === humanPlayer.user_id && (e.event === 'Killed' || e.event === 'BotKilled' || e.event === 'KilledByStorm'))
+    : null;
+  const humanDied = !!humanDeathEvent;
+
+  // Nearest Extraction Zone calculation
+  const nearestExtraction = useMemo(() => {
+    if (!humanPlayer || humanPlayer.trajectory.length === 0 || extractions.length === 0) return null;
+    const lastPt = humanPlayer.trajectory[humanPlayer.trajectory.length - 1];
+    let bestZone = extractions[0];
+    let minDistance = 9999;
+    for (const ext of extractions) {
+      const dist = Math.hypot(lastPt.px - ext.center_px, lastPt.py - ext.center_py);
+      if (dist < minDistance) {
+        minDistance = dist;
+        bestZone = ext;
+      }
+    }
+    return {
+      zone: bestZone,
+      distancePx: Math.round(minDistance),
+      isInsideZone: minDistance <= bestZone.radius_px * 2.2
+    };
+  }, [humanPlayer, extractions]);
+
+  // Human combat metrics
+  const humanKills = humanPlayer ? events.filter(e => e.user_id === humanPlayer.user_id && (e.event === 'Kill' || e.event === 'BotKill')).length : 0;
+  const humanLoot = humanPlayer ? events.filter(e => e.user_id === humanPlayer.user_id && e.event === 'Loot').length : 0;
 
   // Active chronological event ticker up to currentTime
   const recentEvents = events
@@ -92,7 +121,7 @@ export const InspectorHUD: React.FC<InspectorHUDProps> = ({
         </div>
 
         {/* Selected Player Identity Card */}
-        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 mt-2">
+        <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 mt-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 truncate">
               <div className="w-6 h-6 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 font-bold text-xs shrink-0">
@@ -103,7 +132,7 @@ export const InspectorHUD: React.FC<InspectorHUDProps> = ({
                   {humanPlayer ? humanPlayer.user_id : 'Observer Mode'}
                 </p>
                 <p className="text-[10px] text-slate-400 font-mono">
-                  {humanPlayer ? `${humanPlayer.trajectory.length} Keyframe Positions` : 'All Players Active'}
+                  {humanPlayer ? `${humanPlayer.trajectory.length} Keyframes • ${humanKills} Kills • ${humanLoot} Loot` : 'All Players Active'}
                 </p>
               </div>
             </div>
@@ -112,6 +141,57 @@ export const InspectorHUD: React.FC<InspectorHUDProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Tactical Match Outcome & Extraction Debrief */}
+        {humanPlayer && (
+          <div className={`mt-2 p-2.5 rounded-xl border ${
+            humanDied 
+              ? 'bg-rose-950/40 border-rose-500/40 text-rose-200' 
+              : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
+          }`}>
+            <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+              <span className="font-bold text-xs flex items-center gap-1.5">
+                {humanDied ? (
+                  <>
+                    <Skull size={13} className="text-rose-400" />
+                    <span>MISSION FAILED: DEFEAT</span>
+                  </>
+                ) : (
+                  <>
+                    <Award size={13} className="text-emerald-400" />
+                    <span>MISSION ACCOMPLISHED: VICTORY</span>
+                  </>
+                )}
+              </span>
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                humanDied ? 'bg-rose-900/70 text-rose-300 border border-rose-500/40' : 'bg-emerald-900/70 text-emerald-300 border border-emerald-500/40'
+              }`}>
+                {humanDied ? `KIA at ${Math.floor(humanDeathEvent!.t / 60)}m ${Math.floor(humanDeathEvent!.t % 60)}s` : 'EXTRACTED ALIVE'}
+              </span>
+            </div>
+            <div className="mt-1.5 text-[11px] space-y-1 text-slate-300">
+              {humanDied ? (
+                <>
+                  <p>• <span className="text-rose-400 font-semibold">Casualty:</span> {
+                    humanDeathEvent!.event === 'KilledByStorm'
+                      ? 'Eliminated by hazardous Storm Barrier'
+                      : humanDeathEvent!.killer_id
+                      ? `Eliminated by ${humanDeathEvent!.killer_is_bot ? 'Bot' : 'Player'} (${humanDeathEvent!.killer_id.slice(0, 6)})`
+                      : 'Eliminated in combat engagement'
+                  }</p>
+                  <p>• <span className="text-amber-400 font-semibold">Timeline:</span> Died {Math.floor((duration - humanDeathEvent!.t) / 60)}m {Math.floor((duration - humanDeathEvent!.t) % 60)}s before match conclusion.</p>
+                </>
+              ) : (
+                <>
+                  <p>• <span className="text-emerald-400 font-semibold">Win Condition:</span> Survived match with 0 deaths.</p>
+                  {nearestExtraction && (
+                    <p>• <span className="text-cyan-400 font-semibold">Evacuation Pad:</span> {nearestExtraction.zone.name} ({nearestExtraction.distancePx}px {nearestExtraction.isInsideZone ? '• Within Evac Perimeter' : ''})</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* CARD 2: Match Combat & Resource Analytics */}

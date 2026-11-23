@@ -112,8 +112,9 @@ export const App: React.FC = () => {
 
       if (matchSummaries.length > 0) {
         const preferredMatch = matchSummaries.find(m => m.human_count > 0) || matchSummaries[0];
-        const targetMatchId = selectedMatch && matchSummaries.some(m => m.match_id === selectedMatch)
-          ? selectedMatch
+        const urlMatch = new URLSearchParams(window.location.search).get('match') || selectedMatch;
+        const targetMatchId = urlMatch && matchSummaries.some(m => m.match_id === urlMatch)
+          ? urlMatch
           : preferredMatch.match_id;
 
         setSelectedMatch(targetMatchId);
@@ -192,6 +193,37 @@ export const App: React.FC = () => {
   }, [selectedMap, layerFilters.showMacroRivers]);
 
   const matchDuration = matchData?.duration || 100;
+
+  // Climax Match Outcome for Timeline & Debrief
+  const matchOutcome = useMemo(() => {
+    if (!matchData?.players) return null;
+    const human = matchData.players.find(p => !p.is_bot);
+    if (!human || human.trajectory.length === 0) return null;
+
+    const deathEvent = matchData.events.find(
+      e => e.user_id === human.user_id && (e.event === 'Killed' || e.event === 'BotKilled' || e.event === 'KilledByStorm')
+    );
+
+    if (deathEvent) {
+      const killer = deathEvent.event === 'KilledByStorm'
+        ? 'Storm Barrier'
+        : deathEvent.killer_id
+        ? `${deathEvent.killer_is_bot ? 'Bot' : 'Player'} (${deathEvent.killer_id.slice(0, 6)})`
+        : 'Combat';
+      return {
+        status: 'DEFEAT' as const,
+        time: deathEvent.t,
+        reason: `Eliminated by ${killer}`
+      };
+    }
+
+    const lastPt = human.trajectory[human.trajectory.length - 1];
+    return {
+      status: 'VICTORY' as const,
+      time: lastPt.t,
+      reason: 'Extracted Alive'
+    };
+  }, [matchData]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
@@ -287,6 +319,7 @@ export const App: React.FC = () => {
               players={matchData?.players || []}
               events={matchData?.events || []}
               pois={matchData?.pois || []}
+              extractions={matchData?.extractions || []}
               currentTime={currentTime}
               selectedPlayerId={selectedPlayerId}
               onSelectPlayer={setSelectedPlayerId}
@@ -312,6 +345,9 @@ export const App: React.FC = () => {
             duration={matchDuration}
             currentTime={currentTime}
             events={matchData?.events || []}
+            outcomeStatus={matchOutcome?.status}
+            outcomeTime={matchOutcome?.time}
+            outcomeReason={matchOutcome?.reason}
             onTimeChange={setCurrentTime}
           />
         </div>

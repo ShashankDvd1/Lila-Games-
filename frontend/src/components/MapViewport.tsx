@@ -200,15 +200,121 @@ const createPlayerHeadIcon = (
   });
 };
 
-const createExtractionIcon = (name: string) => L.divIcon({
+const createExtractionIcon = (name: string, isNearPlayer: boolean = false) => L.divIcon({
   className: 'extraction-marker',
   html: `
-    <div style="background: rgba(16, 185, 129, 0.25); border: 2px solid #10b981; border-radius: 8px; padding: 2px 6px; color: #10b981; font-size: 10px; font-weight: bold; white-space: nowrap; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); backdrop-filter: blur(4px);">
-      🚁 ${name}
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
+      <div class="extraction-beacon-radar" style="width: 52px; height: 52px;"></div>
+      <div style="
+        background: ${isNearPlayer ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95))' : 'rgba(15, 23, 42, 0.92)'};
+        border: 2px solid ${isNearPlayer ? '#34d399' : '#10b981'};
+        border-radius: 8px;
+        padding: 3px 8px;
+        color: ${isNearPlayer ? '#ffffff' : '#34d399'};
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        box-shadow: 0 0 16px ${isNearPlayer ? 'rgba(52, 211, 153, 0.85)' : 'rgba(16, 185, 129, 0.45)'};
+        backdrop-filter: blur(6px);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      ">
+        <span style="font-size: 13px;">🚁</span>
+        <span>${name}</span>
+        ${isNearPlayer ? '<span style="background: #047857; color: #a7f3d0; padding: 1px 4px; border-radius: 4px; font-size: 8px; margin-left: 2px;">EVAC ACTIVE</span>' : ''}
+      </div>
     </div>
   `,
-  iconSize: [80, 20],
-  iconAnchor: [40, 10]
+  iconSize: [110, 32],
+  iconAnchor: [55, 16]
+});
+
+// Win Outcome Marker (Celebratory Extraction Point)
+const createVictoryOutcomeIcon = (timeStr: string, reason: string) => L.divIcon({
+  className: 'victory-outcome-marker',
+  html: `
+    <div class="victory-outcome-pulse" style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
+      <div style="
+        background: radial-gradient(circle, #fbbf24 0%, #d97706 70%, #92400e 100%);
+        border: 2.5px solid #fef08a;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        box-shadow: 0 0 20px #fbbf24, 0 0 35px rgba(245, 158, 11, 0.85);
+        z-index: 10;
+      ">
+        🏆
+      </div>
+      <div style="
+        margin-top: 5px;
+        background: rgba(15, 23, 42, 0.96);
+        border: 1.5px solid #10b981;
+        border-radius: 7px;
+        padding: 3px 8px;
+        color: #34d399;
+        font-size: 9px;
+        font-weight: 800;
+        white-space: nowrap;
+        box-shadow: 0 0 14px rgba(16, 185, 129, 0.7);
+        text-align: center;
+        pointer-events: auto;
+      ">
+        <div style="letter-spacing: 0.5px;">🏆 EXTRACTION SUCCESS • WON</div>
+        <div style="color: #cbd5e1; font-size: 8px; font-weight: normal; margin-top: 1px;">${reason} (${timeStr})</div>
+      </div>
+    </div>
+  `,
+  iconSize: [140, 65],
+  iconAnchor: [70, 20]
+});
+
+// Defeat Outcome Marker (Eliminated in Action)
+const createDefeatOutcomeIcon = (timeStr: string, killerInfo: string) => L.divIcon({
+  className: 'defeat-outcome-marker',
+  html: `
+    <div class="defeat-outcome-pulse" style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
+      <div style="
+        background: radial-gradient(circle, #ef4444 0%, #991b1b 70%, #450a0a 100%);
+        border: 2.5px solid #fca5a5;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        box-shadow: 0 0 20px #ef4444, 0 0 35px rgba(239, 68, 68, 0.85);
+        z-index: 10;
+      ">
+        💀
+      </div>
+      <div style="
+        margin-top: 5px;
+        background: rgba(15, 23, 42, 0.96);
+        border: 1.5px solid #ef4444;
+        border-radius: 7px;
+        padding: 3px 8px;
+        color: #f87171;
+        font-size: 9px;
+        font-weight: 800;
+        white-space: nowrap;
+        box-shadow: 0 0 14px rgba(239, 68, 68, 0.7);
+        text-align: center;
+        pointer-events: auto;
+      ">
+        <div style="letter-spacing: 0.5px;">💀 MISSION FAILED • K.I.A.</div>
+        <div style="color: #cbd5e1; font-size: 8px; font-weight: normal; margin-top: 1px;">${killerInfo} (${timeStr})</div>
+      </div>
+    </div>
+  `,
+  iconSize: [140, 65],
+  iconAnchor: [70, 20]
 });
 
 // Dramatic Elimination Shockwave Icon for active kill/death moments
@@ -566,6 +672,64 @@ export const MapViewport: React.FC<MapViewportProps> = ({
     return stormRing.initial_radius_px - progress * (stormRing.initial_radius_px - stormRing.final_radius_px);
   }, [stormRing, currentTime]);
 
+  // Human Player Match Outcome (Win/Extraction vs Defeat/Elimination)
+  const humanOutcome = useMemo(() => {
+    const human = players.find(p => !p.is_bot);
+    if (!human || human.trajectory.length === 0) return null;
+
+    const deathEvent = events.find(
+      e => e.user_id === human.user_id && (e.event === 'Killed' || e.event === 'BotKilled' || e.event === 'KilledByStorm')
+    );
+
+    if (deathEvent) {
+      const killerInfo = deathEvent.event === 'KilledByStorm'
+        ? 'Hazardous Storm'
+        : deathEvent.killer_id
+        ? `${deathEvent.killer_is_bot ? '🤖 Bot' : '👤 Player'} ${deathEvent.killer_id.slice(0, 6)}`
+        : 'Combat Engagement';
+      const m = Math.floor(deathEvent.t / 60);
+      const s = Math.floor(deathEvent.t % 60);
+      const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+      return {
+        status: 'DEFEAT' as const,
+        time: deathEvent.t,
+        timeStr,
+        pos: [1024 - deathEvent.py, deathEvent.px] as [number, number],
+        killerInfo,
+        reason: `Eliminated by ${killerInfo}`,
+        elevation: deathEvent.elevation
+      };
+    }
+
+    // Survived / Extracted
+    const lastPt = human.trajectory[human.trajectory.length - 1];
+    let nearestExtName = 'Safe Sector';
+    let nearestDist = 9999;
+    for (const ext of extractions) {
+      const dist = Math.hypot(lastPt.px - ext.center_px, lastPt.py - ext.center_py);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestExtName = ext.name;
+      }
+    }
+    const isAtPad = nearestDist <= 140;
+    const reason = isAtPad ? `Extracted via ${nearestExtName}` : 'Survived Match Duration';
+    const m = Math.floor(lastPt.t / 60);
+    const s = Math.floor(lastPt.t % 60);
+    const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+
+    return {
+      status: 'VICTORY' as const,
+      time: lastPt.t,
+      timeStr,
+      pos: [1024 - lastPt.py, lastPt.px] as [number, number],
+      reason,
+      nearestExtName,
+      nearestDist: Math.round(nearestDist),
+      elevation: lastPt.elevation
+    };
+  }, [players, events, extractions]);
+
   return (
     <div className="relative w-full h-[540px] xl:h-[560px] aspect-square rounded-2xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950 flex flex-col">
       <MapContainer
@@ -645,24 +809,46 @@ export const MapViewport: React.FC<MapViewportProps> = ({
         ))}
 
         {/* 3. Extraction Zones */}
-        {layerFilters.showExtractions && extractions.map(ext => (
-          <React.Fragment key={ext.id}>
-            <Circle
-              center={[1024 - ext.center_py, ext.center_px]}
-              radius={ext.radius_px}
-              pathOptions={{
-                color: '#10b981',
-                weight: 2,
-                fillColor: '#10b981',
-                fillOpacity: 0.15
-              }}
-            />
-            <Marker
-              position={[1024 - ext.center_py, ext.center_px]}
-              icon={createExtractionIcon(ext.name)}
-            />
-          </React.Fragment>
-        ))}
+        {layerFilters.showExtractions && extractions.map(ext => {
+          const isNear = currentHumanPos 
+            ? Math.hypot(currentHumanPos[1] - ext.center_px, (1024 - currentHumanPos[0]) - ext.center_py) <= ext.radius_px * 2.2 
+            : false;
+
+          return (
+            <React.Fragment key={ext.id}>
+              <Circle
+                center={[1024 - ext.center_py, ext.center_px]}
+                radius={ext.radius_px}
+                pathOptions={{
+                  color: isNear ? '#34d399' : '#10b981',
+                  weight: isNear ? 3 : 2,
+                  fillColor: isNear ? '#34d399' : '#10b981',
+                  fillOpacity: isNear ? 0.35 : 0.18,
+                  dashArray: isNear ? undefined : '5, 5'
+                }}
+              >
+                <Popup>
+                  <div className="text-xs p-1.5 text-slate-100">
+                    <p className="font-bold text-sm text-emerald-400 flex items-center gap-1.5">
+                      🚁 Evacuation Zone: {ext.name}
+                    </p>
+                    <p className="text-slate-300 mt-1">Minimap Target: ({Math.round(ext.center_px)}, {Math.round(ext.center_py)})</p>
+                    <p className="text-slate-300">Extraction Radius: {Math.round(ext.radius_px)} px</p>
+                    {isNear && (
+                      <p className="font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/50 mt-1.5 inline-block">
+                        ✅ PLAYER WITHIN EXTRACTION PERIMETER
+                      </p>
+                    )}
+                  </div>
+                </Popup>
+              </Circle>
+              <Marker
+                position={[1024 - ext.center_py, ext.center_px]}
+                icon={createExtractionIcon(ext.name, isNear)}
+              />
+            </React.Fragment>
+          );
+        })}
 
         {/* 4. Dynamic Shrinking Storm Ring */}
         {layerFilters.showStormRing && stormRing && (
@@ -821,6 +1007,55 @@ export const MapViewport: React.FC<MapViewportProps> = ({
             </Marker>
           );
         })}
+
+        {/* 9. Final Match Win/Loss Outcome Marker */}
+        {humanOutcome && (
+          // Display victory marker when near extraction or past extraction time; display defeat marker when eliminated
+          (humanOutcome.status === 'DEFEAT' && currentTime >= humanOutcome.time) ||
+          (humanOutcome.status === 'VICTORY' && currentTime >= Math.max(0, humanOutcome.time - 25))
+        ) && (
+          <Marker
+            position={humanOutcome.pos}
+            zIndexOffset={3800}
+            icon={
+              humanOutcome.status === 'VICTORY'
+                ? createVictoryOutcomeIcon(humanOutcome.timeStr, humanOutcome.reason)
+                : createDefeatOutcomeIcon(humanOutcome.timeStr, humanOutcome.killerInfo)
+            }
+          >
+            <Popup>
+              <div className="text-xs p-2 text-slate-100 min-w-[210px]">
+                <div className="flex items-center gap-1.5 font-bold text-sm border-b border-slate-700 pb-1.5">
+                  {humanOutcome.status === 'VICTORY' ? (
+                    <span className="text-emerald-400">🏆 MISSION SUCCESS (MATCH WON)</span>
+                  ) : (
+                    <span className="text-rose-400">💀 MISSION FAILED (K.I.A.)</span>
+                  )}
+                </div>
+                <div className="mt-2 space-y-1 text-[11px]">
+                  <p>
+                    <span className="text-slate-400">Event Time: </span>
+                    <span className="font-mono text-cyan-400 font-bold">{humanOutcome.timeStr}</span> ({Math.round(humanOutcome.time)}s)
+                  </p>
+                  <p>
+                    <span className="text-slate-400">Outcome Details: </span>
+                    <span className="font-semibold text-slate-200">{humanOutcome.reason}</span>
+                  </p>
+                  {humanOutcome.status === 'VICTORY' && humanOutcome.nearestExtName && (
+                    <p>
+                      <span className="text-slate-400">Nearest Evac: </span>
+                      <span className="text-emerald-300 font-semibold">{humanOutcome.nearestExtName} ({humanOutcome.nearestDist}px)</span>
+                    </p>
+                  )}
+                  <p>
+                    <span className="text-slate-400">Elevation: </span>
+                    <span className="font-mono text-amber-300">{humanOutcome.elevation}m</span>
+                  </p>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        )}
       </MapContainer>
 
       {/* Floating Tactical Map Legend & Layer Controls */}
@@ -904,6 +1139,28 @@ export const MapViewport: React.FC<MapViewportProps> = ({
                 />
                 <span className="text-indigo-400">🧭</span>
                 <span>Sightlines</span>
+              </label>
+
+              <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={layerFilters.showExtractions}
+                  onChange={() => onToggleLayer && onToggleLayer('showExtractions')}
+                  className="rounded accent-emerald-400 w-3 h-3"
+                />
+                <span className="text-emerald-400">🚁</span>
+                <span>Evac Pads</span>
+              </label>
+
+              <label className="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={layerFilters.showCombatVectors}
+                  onChange={() => onToggleLayer && onToggleLayer('showCombatVectors')}
+                  className="rounded accent-rose-400 w-3 h-3"
+                />
+                <span className="text-rose-400">🎯</span>
+                <span>Lasers</span>
               </label>
             </div>
           )}
