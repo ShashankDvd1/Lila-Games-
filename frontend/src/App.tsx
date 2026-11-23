@@ -69,9 +69,13 @@ export const App: React.FC = () => {
     showMacroRivers: false
   });
 
-  const toggleLayer = (layerKey: keyof typeof layerFilters) => {
+  const toggleLayer = useCallback((layerKey: keyof typeof layerFilters) => {
     setLayerFilters(prev => ({ ...prev, [layerKey]: !prev[layerKey] }));
-  };
+  }, []);
+
+  const handleCursorMove = useCallback((coords: { x: number; z: number; px: number; py: number } | null) => {
+    setCursorWorld(coords);
+  }, []);
 
   // URL Deep-Linking: Synchronize URL query params on significant state changes (debounced to avoid 60fps history thrashes)
   useEffect(() => {
@@ -306,7 +310,7 @@ export const App: React.FC = () => {
               showHeatmap={showHeatmap}
               heatmapMode={heatmapMode}
               heatmapPoints={heatmapPoints}
-              onCursorMove={setCursorWorld}
+              onCursorMove={handleCursorMove}
               onToggleLayer={toggleLayer}
             />
           </div>

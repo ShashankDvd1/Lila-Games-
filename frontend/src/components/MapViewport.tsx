@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { MapContainer, ImageOverlay, Polyline, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -200,59 +200,115 @@ const createPlayerHeadIcon = (
   });
 };
 
-  const createExtractionIcon = (name: string, isNearPlayer: boolean = false) => L.divIcon({
-    className: 'extraction-marker',
-    html: `
-    <div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
-      <div class="extraction-beacon-radar" style="width: 52px; height: 52px;"></div>
+const createExtractionIcon = (name: string, isNearPlayer: boolean = false) => L.divIcon({
+  className: 'extraction-goal-marker',
+  html: `
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto; user-select: none;">
+      <!-- Top Tactical Header Tag -->
       <div style="
-        background: ${isNearPlayer ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95))' : 'rgba(15, 23, 42, 0.92)'};
-        border: 2px solid ${isNearPlayer ? '#34d399' : '#10b981'};
-        border-radius: 8px;
-        padding: 3px 8px;
-        color: ${isNearPlayer ? '#ffffff' : '#34d399'};
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
-        box-shadow: 0 0 16px ${isNearPlayer ? 'rgba(52, 211, 153, 0.85)' : 'rgba(16, 185, 129, 0.45)'};
-        backdrop-filter: blur(6px);
+        background: ${isNearPlayer ? '#059669' : '#065f46'};
+        border: 1.5px solid ${isNearPlayer ? '#6ee7b7' : '#34d399'};
+        border-bottom: none;
+        border-radius: 6px 6px 0 0;
+        padding: 1.5px 8px;
+        color: #ecfdf5;
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.5);
       ">
-        <span style="font-size: 13px;">🚁</span>
-        <span>${name}</span>
-        ${isNearPlayer ? '<span style="background: #047857; color: #a7f3d0; padding: 1px 4px; border-radius: 4px; font-size: 8px; margin-left: 2px;">EVAC ACTIVE</span>' : ''}
+        <span>🎯</span>
+        <span>${isNearPlayer ? 'EVAC ACTIVE • EXTRACT HERE' : 'PRIMARY EXTRACTION GOAL'}</span>
+      </div>
+
+      <!-- Main Tactical Objective Card -->
+      <div style="
+        background: ${isNearPlayer ? 'linear-gradient(135deg, rgba(6, 78, 59, 0.98), rgba(2, 44, 34, 0.98))' : 'linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(10, 15, 30, 0.96))'};
+        border: 2px solid ${isNearPlayer ? '#34d399' : '#10b981'};
+        border-radius: 8px;
+        padding: 5px 10px;
+        color: white;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7), 0 0 14px ${isNearPlayer ? 'rgba(52, 211, 153, 0.6)' : 'rgba(16, 185, 129, 0.35)'};
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 175px;
+      ">
+        <!-- Helipad [H] Icon Badge -->
+        <div style="
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          background: ${isNearPlayer ? '#10b981' : 'rgba(16, 185, 129, 0.2)'};
+          border: 1.5px solid #34d399;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 900;
+          font-size: 13px;
+          color: ${isNearPlayer ? '#ffffff' : '#34d399'};
+          flex-shrink: 0;
+        ">
+          🚁
+        </div>
+
+        <!-- Name & Subtitle -->
+        <div style="display: flex; flex-direction: column; text-align: left;">
+          <span style="
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: ${isNearPlayer ? '#6ee7b7' : '#ffffff'};
+            line-height: 1.2;
+            text-transform: uppercase;
+            white-space: nowrap;
+          ">
+            ${name}
+          </span>
+          <span style="
+            font-size: 8px;
+            font-weight: 600;
+            color: #94a3b8;
+            letter-spacing: 0.3px;
+            margin-top: 1px;
+            white-space: nowrap;
+          ">
+            ${isNearPlayer ? '⚡ IN EXTRACTION ZONE' : 'SAFE EXTRACTION ZONE'}
+          </span>
+        </div>
       </div>
     </div>
   `,
-  iconSize: [110, 32],
-    iconAnchor: [55, 16]
-  });
+  iconSize: [180, 52],
+  iconAnchor: [90, 26]
+});
 
-  // Win Outcome Marker (Celebratory Extraction Point)
-  const createVictoryOutcomeIcon = (timeStr: string, reason: string) => L.divIcon({
-    className: 'victory-outcome-marker',
-    html: `
-    <div class="victory-outcome-pulse" style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
+// Win Outcome Marker (Celebratory Extraction Point)
+const createVictoryOutcomeIcon = (timeStr: string, reason: string) => L.divIcon({
+  className: 'victory-outcome-marker',
+  html: `
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
       <div style="
         background: radial-gradient(circle, #fbbf24 0%, #d97706 70%, #92400e 100%);
         border: 2.5px solid #fef08a;
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
-        box-shadow: 0 0 20px #fbbf24, 0 0 35px rgba(245, 158, 11, 0.85);
+        font-size: 20px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 158, 11, 0.7);
         z-index: 10;
       ">
         🏆
       </div>
       <div style="
-        margin-top: 5px;
+        margin-top: 4px;
         background: rgba(15, 23, 42, 0.96);
         border: 1.5px solid #10b981;
         border-radius: 7px;
@@ -261,7 +317,7 @@ const createPlayerHeadIcon = (
         font-size: 9px;
         font-weight: 800;
         white-space: nowrap;
-        box-shadow: 0 0 14px rgba(16, 185, 129, 0.7);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
         text-align: center;
         pointer-events: auto;
       ">
@@ -270,32 +326,32 @@ const createPlayerHeadIcon = (
       </div>
     </div>
   `,
-    iconSize: [140, 65],
-    iconAnchor: [70, 20]
-  });
+  iconSize: [140, 60],
+  iconAnchor: [70, 19]
+});
 
-  // Defeat Outcome Marker (Eliminated in Action)
-  const createDefeatOutcomeIcon = (timeStr: string, killerInfo: string) => L.divIcon({
-    className: 'defeat-outcome-marker',
-    html: `
-    <div class="defeat-outcome-pulse" style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
+// Defeat Outcome Marker (Eliminated in Action)
+const createDefeatOutcomeIcon = (timeStr: string, killerInfo: string) => L.divIcon({
+  className: 'defeat-outcome-marker',
+  html: `
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
       <div style="
         background: radial-gradient(circle, #ef4444 0%, #991b1b 70%, #450a0a 100%);
         border: 2.5px solid #fca5a5;
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
-        box-shadow: 0 0 20px #ef4444, 0 0 35px rgba(239, 68, 68, 0.85);
+        font-size: 20px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 16px rgba(239, 68, 68, 0.7);
         z-index: 10;
       ">
         💀
       </div>
       <div style="
-        margin-top: 5px;
+        margin-top: 4px;
         background: rgba(15, 23, 42, 0.96);
         border: 1.5px solid #ef4444;
         border-radius: 7px;
@@ -304,7 +360,7 @@ const createPlayerHeadIcon = (
         font-size: 9px;
         font-weight: 800;
         white-space: nowrap;
-        box-shadow: 0 0 14px rgba(239, 68, 68, 0.7);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
         text-align: center;
         pointer-events: auto;
       ">
@@ -313,9 +369,9 @@ const createPlayerHeadIcon = (
       </div>
     </div>
   `,
-    iconSize: [140, 65],
-    iconAnchor: [70, 20]
-  });
+  iconSize: [140, 60],
+  iconAnchor: [70, 19]
+});
 
   // Dramatic Elimination Shockwave Icon for active kill/death moments
   const createEliminationShockwaveIcon = (eventName: string, victimId?: string, isBot?: boolean) => {
@@ -478,18 +534,27 @@ const MapControllerAndEvents: React.FC<{
   onCursorMove?: (coords: { x: number; z: number; px: number; py: number } | null) => void;
 }> = ({ mapId, humanPosition, onCursorMove }) => {
   const map = useMap();
+  const rafRef = useRef<number | null>(null);
 
   useMapEvents({
     mousemove(e) {
       if (!onCursorMove) return;
-      const px = e.latlng.lng;
-      const py = 1024 - e.latlng.lat;
-      if (px >= 0 && px <= 1024 && py >= 0 && py <= 1024) {
-        const world = pixelToWorld(px, py, mapId);
-        onCursorMove({ x: world.x, z: world.z, px: Math.round(px), py: Math.round(py) });
-      }
+      if (rafRef.current !== null) return; // Drop redundant events within same animation frame
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const px = e.latlng.lng;
+        const py = 1024 - e.latlng.lat;
+        if (px >= 0 && px <= 1024 && py >= 0 && py <= 1024) {
+          const world = pixelToWorld(px, py, mapId);
+          onCursorMove({ x: world.x, z: world.z, px: Math.round(px), py: Math.round(py) });
+        }
+      });
     },
     mouseout() {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       if (onCursorMove) onCursorMove(null);
     }
   });
@@ -545,7 +610,7 @@ const MapControllerAndEvents: React.FC<{
   );
 };
 
-export const MapViewport: React.FC<MapViewportProps> = ({
+const MapViewportComponent: React.FC<MapViewportProps> = ({
   mapId,
   players,
   events,
@@ -844,6 +909,7 @@ export const MapViewport: React.FC<MapViewportProps> = ({
               </Circle>
               <Marker
                 position={[1024 - ext.center_py, ext.center_px]}
+                zIndexOffset={2200}
                 icon={createExtractionIcon(ext.name, isNear)}
               />
             </React.Fragment>
@@ -1169,3 +1235,6 @@ export const MapViewport: React.FC<MapViewportProps> = ({
     </div>
   );
 };
+
+export const MapViewport = React.memo(MapViewportComponent);
+
