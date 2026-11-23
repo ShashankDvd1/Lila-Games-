@@ -66,12 +66,17 @@ class TelemetryDB:
                 ROUND(MAX(raw_epoch) - MIN(raw_epoch), 1) as duration_seconds
             FROM telemetry
             GROUP BY match_id, map_id, date_folder
-            ORDER BY total_events DESC
+            ORDER BY human_count DESC, total_events DESC
         """)
         print("DuckDB in-memory telemetry table, indexes, and summary cache initialized.")
 
+    def get_cursor(self):
+        """Returns an isolated DuckDB cursor for thread-safe concurrent queries."""
+        return self.con.cursor()
+
     def get_stats(self) -> Dict[str, int]:
-        res = self.con.execute("""
+        cur = self.get_cursor()
+        res = cur.execute("""
             SELECT 
                 COUNT(*) as total_events,
                 COUNT(DISTINCT match_id) as total_matches,
@@ -96,9 +101,11 @@ class TelemetryDB:
         query = f"""
             SELECT * FROM matches_summary
             {where_str}
+            ORDER BY human_count DESC, total_events DESC
             LIMIT 200
         """
-        df = self.con.execute(query).df()
+        cur = self.get_cursor()
+        df = cur.execute(query).df()
         return df.to_dict(orient="records")
 
     def get_match_payload(self, match_id: str) -> Optional[Dict[str, Any]]:
@@ -115,7 +122,8 @@ class TelemetryDB:
             WHERE match_id = '{match_id}'
             ORDER BY raw_epoch ASC
         """
-        df = self.con.execute(query).df()
+        cur = self.get_cursor()
+        df = cur.execute(query).df()
         if df.empty:
             return None
 
@@ -341,7 +349,8 @@ class TelemetryDB:
             GROUP BY round(x, 0), round(z, 0), x, z
             LIMIT 5000
         """
-        df = self.con.execute(query).df()
+        cur = self.get_cursor()
+        df = cur.execute(query).df()
         
         points = []
         for _, row in df.iterrows():
@@ -369,7 +378,8 @@ class TelemetryDB:
             ORDER BY user_id, raw_epoch ASC
             LIMIT 4000
         """
-        df = self.con.execute(query).df()
+        cur = self.get_cursor()
+        df = cur.execute(query).df()
         grouped: Dict[str, Any] = {}
         for _, row in df.iterrows():
             uid = str(row["user_id"])
