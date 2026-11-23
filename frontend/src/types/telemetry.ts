@@ -21,6 +21,11 @@ export interface EventMarker {
   py: number;
   elevation: number;
   loot_rarity?: 'Common' | 'Rare' | 'Epic' | 'Legendary';
+  killer_id?: string;
+  killer_is_bot?: boolean;
+  victim_id?: string;
+  victim_is_bot?: boolean;
+  distance_meters?: number;
 }
 
 export interface CombatEngagement {

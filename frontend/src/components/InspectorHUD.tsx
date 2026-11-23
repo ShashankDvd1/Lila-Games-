@@ -1,5 +1,5 @@
-import React from 'react';
-import { Users, Crosshair, CloudRain, Package, Navigation, Target } from 'lucide-react';
+import React, { useState } from 'react';
+import { Navigation, Users, Crosshair, CloudRain, Package, Shield, Activity } from 'lucide-react';
 import type { PlayerJourney, EventMarker, POIMetric } from '../types/telemetry';
 
 interface InspectorHUDProps {
@@ -21,10 +21,10 @@ export const InspectorHUD: React.FC<InspectorHUDProps> = ({
   events,
   pois = [],
   currentTime,
-  selectedPlayerId,
-  onSelectPlayer,
   cursorWorld
 }) => {
+  const [tickerFilter, setTickerFilter] = useState<'all' | 'kills' | 'loot'>('all');
+
   const humanCount = players.filter(p => !p.is_bot).length;
   const botCount = players.filter(p => p.is_bot).length;
 
@@ -32,184 +32,304 @@ export const InspectorHUD: React.FC<InspectorHUDProps> = ({
   const stormEvents = events.filter(e => e.event === 'KilledByStorm');
   const lootEvents = events.filter(e => e.event === 'Loot');
 
+  // Human player status
+  const humanPlayer = players.find(p => !p.is_bot);
+  const humanDied = humanPlayer ? events.some(e => e.user_id === humanPlayer.user_id && (e.event === 'Killed' || e.event === 'BotKilled' || e.event === 'KilledByStorm')) : false;
+
   // Active chronological event ticker up to currentTime
   const recentEvents = events
-    .filter(e => e.t <= currentTime)
+    .filter(e => {
+      if (e.t > currentTime) return false;
+      if (tickerFilter === 'kills') return e.event.includes('Kill') || e.event.includes('Killed') || e.event === 'KilledByStorm';
+      if (tickerFilter === 'loot') return e.event === 'Loot';
+      return true;
+    })
     .sort((a, b) => b.t - a.t)
-    .slice(0, 8);
+    .slice(0, 15);
+
+  const formatId = (id?: string, isBot?: boolean) => {
+    if (!id) return '';
+    const icon = isBot ? '🤖' : '👤';
+    const label = id.length > 8 ? id.substring(0, 6) : id;
+    return `${icon} ${label}`;
+  };
 
   return (
-    <div className="flex flex-col gap-3 w-84 shrink-0 text-white text-xs">
-      {/* 1. Spatial Telemetry & Coordinate Tracker */}
-      <div className="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 shadow-xl">
-        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-800">
-          <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-            <Navigation size={13} className="text-cyan-400" /> Spatial Coordinates
-          </span>
-          <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">
-            {mapId}
-          </span>
-        </div>
-
-        {cursorWorld ? (
-          <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-              <p className="text-slate-500 text-[9px] uppercase">World X / Z</p>
-              <p className="font-bold text-cyan-400">{cursorWorld.x.toFixed(1)} / {cursorWorld.z.toFixed(1)}</p>
-            </div>
-            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-              <p className="text-slate-500 text-[9px] uppercase">Minimap Px</p>
-              <p className="font-bold text-emerald-400">{cursorWorld.px.toFixed(0)} x {cursorWorld.py.toFixed(0)}</p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-slate-500 italic text-[11px]">Hover over minimap to inspect coordinates</p>
-        )}
-      </div>
-
-      {/* 2. Match Summary Statistics */}
-      <div className="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 shadow-xl">
-        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-800">
-          <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-            <Users size={13} className="text-amber-400" /> Match Overview
-          </span>
-          <span className="text-[10px] text-slate-400 font-mono">
-            {Math.floor(duration / 60)}m {Math.floor(duration % 60)}s
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-[11px]">
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-            <Users size={14} className="text-cyan-400" />
-            <div>
-              <p className="text-slate-500 text-[9px]">Players</p>
-              <p className="font-bold">{humanCount}H / {botCount}B</p>
-            </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 w-full h-[540px] xl:h-[560px] overflow-hidden text-slate-100">
+      {/* CARD 1: Spatial Telemetry & Coordinate Inspector */}
+      <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3.5 shadow-xl flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <span className="font-bold text-xs text-white flex items-center gap-2">
+              <Navigation size={14} className="text-cyan-400" /> Spatial Telemetry & Coordinates
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold">
+              {mapId}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-            <Crosshair size={14} className="text-rose-400" />
-            <div>
-              <p className="text-slate-500 text-[9px]">Total Kills</p>
-              <p className="font-bold text-rose-400">{killEvents.length}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-            <CloudRain size={14} className="text-purple-400" />
-            <div>
-              <p className="text-slate-500 text-[9px]">Storm Deaths</p>
-              <p className="font-bold text-purple-400">{stormEvents.length}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-            <Package size={14} className="text-emerald-400" />
-            <div>
-              <p className="text-slate-500 text-[9px]">Loot Gathered</p>
-              <p className="font-bold text-emerald-400">{lootEvents.length}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. POI Analytics Metrics (Level Designer Zone Balancer) */}
-      {pois.length > 0 && (
-        <div className="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 shadow-xl">
-          <p className="font-semibold text-slate-300 mb-2 pb-1.5 border-b border-slate-800 text-[11px] flex items-center gap-1.5">
-            🏰 POI Sector Heat
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {pois.map(poi => (
-              <div key={poi.id} className="flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800/80 text-[10px]">
-                <span className="font-medium flex items-center gap-1.5" style={{ color: poi.color }}>
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: poi.color }} />
-                  {poi.name}
-                </span>
-                <div className="flex items-center gap-2 font-mono text-slate-400">
-                  <span>🚶 {poi.total_visits}</span>
-                  <span>💎 {poi.loot_count}</span>
-                  <span className="text-rose-400">☠️ {poi.kill_count}</span>
-                </div>
+          {cursorWorld ? (
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                <p className="text-slate-500 text-[10px] uppercase font-semibold">World (X, Z)</p>
+                <p className="font-mono font-bold text-sm text-cyan-400">
+                  {cursorWorld.x.toFixed(1)}, {cursorWorld.z.toFixed(1)}
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* 4. Active Chronological Event Ticker */}
-      <div className="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 shadow-xl flex-1 flex flex-col min-h-0">
-        <p className="font-semibold text-slate-300 mb-2 pb-1.5 border-b border-slate-800 flex items-center justify-between">
-          <span>⚡ Live Event Ticker</span>
-          <span className="text-[10px] text-slate-500 font-mono">T: {currentTime.toFixed(1)}s</span>
-        </p>
-
-        <div className="flex flex-col gap-1.5 overflow-y-auto max-h-40 pr-1">
-          {recentEvents.length === 0 ? (
-            <p className="text-slate-500 italic text-[11px] py-2">No events recorded up to this second</p>
+              <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                <p className="text-slate-500 text-[10px] uppercase font-semibold">Minimap Pixel (PX, PY)</p>
+                <p className="font-mono font-bold text-sm text-emerald-400">
+                  {cursorWorld.px} x {cursorWorld.py}
+                </p>
+              </div>
+            </div>
           ) : (
-            recentEvents.map((e, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between bg-slate-950 p-2 rounded-xl border border-slate-800/80 text-[10px]"
-              >
-                <div className="flex items-center gap-1.5 truncate">
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    e.event.includes('Kill') ? 'bg-rose-500' : e.event === 'Loot' ? 'bg-emerald-500' : 'bg-purple-500'
-                  }`} />
-                  <span className="font-medium text-slate-200">{e.event}</span>
-                  {e.loot_rarity && (
-                    <span className="text-[9px] text-amber-400 font-semibold font-mono">[{e.loot_rarity}]</span>
-                  )}
-                  <span className="text-slate-500 font-mono truncate">{e.user_id.substring(0, 6)}</span>
-                </div>
-                <span className="font-mono text-slate-400 shrink-0">+{e.t.toFixed(0)}s</span>
-              </div>
-            ))
+            <div className="bg-slate-950/60 p-4 rounded-xl border border-dashed border-slate-800 text-center mt-3">
+              <p className="text-slate-400 text-xs">Hover cursor over minimap to inspect real-time coordinates</p>
+            </div>
           )}
+        </div>
+
+        {/* Selected Player Identity Card */}
+        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 mt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 truncate">
+              <div className="w-6 h-6 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 font-bold text-xs shrink-0">
+                👤
+              </div>
+              <div className="truncate">
+                <p className="font-bold text-xs text-white truncate">
+                  {humanPlayer ? humanPlayer.user_id : 'Observer Mode'}
+                </p>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  {humanPlayer ? `${humanPlayer.trajectory.length} Keyframe Positions` : 'All Players Active'}
+                </p>
+              </div>
+            </div>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${humanDied ? 'bg-rose-950 border border-rose-500 text-rose-300' : 'bg-emerald-950 border border-emerald-500 text-emerald-300'}`}>
+              {humanDied ? '💀 ELIMINATED' : '🏆 SURVIVED'}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 5. Player Roster & Trajectory Isolation */}
-      <div className="bg-slate-900/90 p-3 rounded-2xl border border-slate-800 shadow-xl">
-        <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-800">
-          <span className="font-semibold text-slate-300">👥 Player Roster</span>
-          {selectedPlayerId && (
-            <button
-              onClick={() => onSelectPlayer(null)}
-              className="text-[10px] text-cyan-400 hover:underline cursor-pointer"
-            >
-              Show All
-            </button>
-          )}
+      {/* CARD 2: Match Combat & Resource Analytics */}
+      <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3.5 shadow-xl flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <span className="font-bold text-xs text-white flex items-center gap-2">
+              <Activity size={14} className="text-amber-400" /> Match Combat Analytics
+            </span>
+            <span className="text-slate-400 font-mono text-[11px]">
+              Duration: {Math.floor(duration / 60)}m {Math.floor(duration % 60)}s
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+                <Users size={16} />
+              </div>
+              <div>
+                <p className="text-slate-500 text-[10px] uppercase font-semibold">Roster Composition</p>
+                <p className="font-bold text-xs text-white">
+                  <span className="text-cyan-400">{humanCount} Human</span> / <span className="text-amber-400">{botCount} Bots</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-rose-950 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                <Crosshair size={16} />
+              </div>
+              <div>
+                <p className="text-slate-500 text-[10px] uppercase font-semibold">Combat Eliminations</p>
+                <p className="font-bold text-xs text-rose-400">{killEvents.length} Kills</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-purple-950 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
+                <CloudRain size={16} />
+              </div>
+              <div>
+                <p className="text-slate-500 text-[10px] uppercase font-semibold">Storm Casualties</p>
+                <p className="font-bold text-xs text-purple-400">{stormEvents.length} Deaths</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-950 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <Package size={16} />
+              </div>
+              <div>
+                <p className="text-slate-500 text-[10px] uppercase font-semibold">Loot Caches Opened</p>
+                <p className="font-bold text-xs text-emerald-400">{lootEvents.length} Crates</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
-          {players.map(p => {
-            const isSelected = selectedPlayerId === p.user_id;
-            return (
-              <div
-                key={p.user_id}
-                onClick={() => onSelectPlayer(isSelected ? null : p.user_id)}
-                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border cursor-pointer transition ${
-                  isSelected
-                    ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300 font-bold'
-                    : 'bg-slate-950 border-slate-800 hover:bg-slate-800/80 text-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 truncate font-mono text-[10px]">
-                  <span>{p.is_bot ? '🤖' : '👤'}</span>
-                  <span className="truncate">{p.user_id}</span>
+        {/* Level Designer Recommendation Alert */}
+        <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 text-[11px] text-slate-400 mt-2 flex items-center gap-2">
+          <Shield size={14} className="text-teal-400 shrink-0" />
+          <span>
+            {killEvents.length > 0 ? `Active combat pacing: 1 kill every ~${Math.round(duration / Math.max(killEvents.length, 1))}s.` : 'Low engagement pacing: Consider adjusting POI choke points.'}
+          </span>
+        </div>
+      </div>
+
+      {/* CARD 3: POI Sector Balancing (Level Design Hotspots) */}
+      <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3.5 shadow-xl flex flex-col justify-between overflow-hidden">
+        <div>
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <span className="font-bold text-xs text-white flex items-center gap-2">
+              🏰 POI Sector Balancing & Heat
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {pois.length} Sectors Configured
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1.5 mt-2.5 overflow-y-auto max-h-[160px] pr-1">
+            {pois.length === 0 ? (
+              <p className="text-slate-500 italic text-xs py-2">No POI zones defined for this map</p>
+            ) : (
+              pois.map(poi => (
+                <div key={poi.id} className="flex items-center justify-between bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs hover:border-slate-700 transition">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: poi.color }} />
+                    <span className="font-medium text-slate-200">{poi.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono text-xs">
+                    <span title="Total player visits" className="text-slate-400">🚶 {poi.total_visits}</span>
+                    <span title="Loot pickups in this POI" className="text-emerald-400">💎 {poi.loot_count}</span>
+                    <span title="Combat kills in this POI" className="text-rose-400 font-bold">⚔️ {poi.kill_count}</span>
+                  </div>
                 </div>
-                <button
-                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
-                  title="Isolate Trajectory"
-                >
-                  <Target size={12} className={isSelected ? 'text-cyan-400' : ''} />
-                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="text-[10px] text-slate-500 pt-1.5 border-t border-slate-800/80 flex items-center justify-between font-mono">
+          <span>Scale: {mapId === 'Lockdown' ? '1000m' : mapId === 'GrandRift' ? '581m' : '900m'}</span>
+          <span>Dashed circles show level design capture radiuses</span>
+        </div>
+      </div>
+
+      {/* CARD 4: Live Chronological Event Ticker & Kill Feed */}
+      <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-3.5 shadow-xl flex flex-col justify-between overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
+            <span className="font-bold text-xs text-white flex items-center gap-2">
+              ⚡ Live Event Feed
+              <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-500/30">
+                T: {currentTime.toFixed(1)}s
+              </span>
+            </span>
+
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1 text-[10px]">
+              <button
+                onClick={() => setTickerFilter('all')}
+                className={`px-2 py-0.5 rounded-lg border transition cursor-pointer ${tickerFilter === 'all' ? 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setTickerFilter('kills')}
+                className={`px-2 py-0.5 rounded-lg border transition cursor-pointer ${tickerFilter === 'kills' ? 'bg-rose-950 border-rose-500 text-rose-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+              >
+                ⚔️ Kills
+              </button>
+              <button
+                onClick={() => setTickerFilter('loot')}
+                className={`px-2 py-0.5 rounded-lg border transition cursor-pointer ${tickerFilter === 'loot' ? 'bg-emerald-950 border-emerald-500 text-emerald-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+              >
+                📦 Loot
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5 mt-2.5 overflow-y-auto flex-1 pr-1">
+            {recentEvents.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-slate-500 italic text-xs py-4">
+                No events recorded up to {currentTime.toFixed(1)}s
               </div>
-            );
-          })}
+            ) : (
+              recentEvents.map((e, idx) => {
+                const isKill = e.event === 'Kill' || e.event === 'BotKill';
+                const isKilled = e.event === 'Killed' || e.event === 'BotKilled';
+                const isStorm = e.event === 'KilledByStorm';
+
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between p-2 rounded-xl border text-xs transition ${
+                      isKill
+                        ? 'bg-rose-950/40 border-rose-800/60 shadow-sm'
+                        : isKilled
+                        ? 'bg-amber-950/30 border-amber-800/40'
+                        : isStorm
+                        ? 'bg-purple-950/40 border-purple-800/60'
+                        : 'bg-slate-950 border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      {isKill ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full shrink-0 bg-rose-500 animate-ping" />
+                          <span className="font-bold text-rose-400 shrink-0">⚔️ ELIM:</span>
+                          <span className={`font-mono font-bold shrink-0 ${e.is_bot ? 'text-amber-400' : 'text-cyan-300'}`}>
+                            {formatId(e.user_id, e.is_bot)}
+                          </span>
+                          <span className="text-slate-400 shrink-0">killed</span>
+                          <span className={`font-mono font-bold shrink-0 ${e.victim_is_bot !== false ? 'text-amber-400' : 'text-cyan-300'}`}>
+                            {e.victim_id ? formatId(e.victim_id, e.victim_is_bot) : (e.event === 'BotKill' ? '🤖 AI Patrol Bot' : 'Enemy')}
+                          </span>
+                        </>
+                      ) : isKilled ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full shrink-0 bg-amber-500" />
+                          <span className="font-bold text-amber-400 shrink-0">💀 DEFEATED:</span>
+                          <span className={`font-mono font-bold shrink-0 ${e.is_bot ? 'text-amber-400' : 'text-cyan-300'}`}>
+                            {formatId(e.user_id, e.is_bot)}
+                          </span>
+                        </>
+                      ) : isStorm ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full shrink-0 bg-purple-500" />
+                          <span className="font-bold text-purple-400 shrink-0">⚡ STORM:</span>
+                          <span className={`font-mono font-bold shrink-0 ${e.is_bot ? 'text-amber-400' : 'text-cyan-300'}`}>
+                            {formatId(e.user_id, e.is_bot)}
+                          </span>
+                          <span className="text-purple-300 shrink-0">eliminated</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />
+                          <span className="font-medium text-emerald-400 shrink-0">LOOT:</span>
+                          <span className={`font-mono font-bold shrink-0 ${e.is_bot ? 'text-amber-400' : 'text-cyan-300'}`}>
+                            {formatId(e.user_id, e.is_bot)}
+                          </span>
+                          {e.loot_rarity && (
+                            <span className="text-[10px] text-amber-400 font-bold">[{e.loot_rarity}]</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <span className="font-mono text-[10px] text-slate-500 shrink-0 ml-2">{e.t.toFixed(1)}s</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
+          <span>Click and drag scrubber below to step through match</span>
         </div>
       </div>
     </div>

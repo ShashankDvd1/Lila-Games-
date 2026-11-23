@@ -79,57 +79,57 @@ export const TimelineController: React.FC<TimelineProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-2 bg-slate-800/90 backdrop-blur-md p-4 rounded-xl border border-slate-700/80 shadow-lg text-white">
+    <div className="flex flex-col gap-1.5 bg-slate-800/90 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-slate-700/80 shadow-lg text-white">
       {/* Upper row: Controls & Time Readout */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Reset / Rewind */}
           <button
             onClick={() => { setIsPlaying(false); onTimeChange(0); }}
             title="Rewind to start (0:00)"
-            className="p-2 rounded-lg bg-slate-700/80 hover:bg-slate-600 transition text-slate-200"
+            className="p-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 transition text-slate-200"
           >
-            <RotateCcw size={16} />
+            <RotateCcw size={15} />
           </button>
 
           {/* Step Back 5s */}
           <button
             onClick={() => onTimeChange(Math.max(0, currentTime - 5))}
             title="Step Back 5s (Left Arrow)"
-            className="p-2 rounded-lg bg-slate-700/80 hover:bg-slate-600 transition text-slate-200"
+            className="p-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 transition text-slate-200"
           >
-            <SkipBack size={16} />
+            <SkipBack size={15} />
           </button>
 
           {/* Play / Pause */}
           <button
             onClick={togglePlay}
             title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-            className={`p-2.5 rounded-lg font-bold transition flex items-center justify-center ${
+            className={`p-2 rounded-lg font-bold transition flex items-center justify-center ${
               isPlaying
                 ? 'bg-amber-600 hover:bg-amber-500 text-white'
                 : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-600/30'
             }`}
           >
-            {isPlaying ? <Pause size={18} /> : <Play size={18} className="translate-x-0.5" />}
+            {isPlaying ? <Pause size={16} /> : <Play size={16} className="translate-x-0.5" />}
           </button>
 
           {/* Step Forward 5s */}
           <button
             onClick={() => onTimeChange(Math.min(duration, currentTime + 5))}
             title="Step Forward 5s (Right Arrow)"
-            className="p-2 rounded-lg bg-slate-700/80 hover:bg-slate-600 transition text-slate-200"
+            className="p-1.5 rounded-lg bg-slate-700/80 hover:bg-slate-600 transition text-slate-200"
           >
-            <SkipForward size={16} />
+            <SkipForward size={15} />
           </button>
 
           {/* Speed Multiplier */}
-          <div className="flex items-center gap-1 ml-2 bg-slate-900/80 px-2 py-1.5 rounded-lg border border-slate-700 text-xs">
-            <FastForward size={13} className="text-cyan-400" />
+          <div className="flex items-center gap-1 ml-1.5 bg-slate-900/80 px-2 py-1 rounded-lg border border-slate-700 text-xs">
+            <FastForward size={12} className="text-cyan-400" />
             <select
               value={speed}
               onChange={e => setSpeed(Number(e.target.value))}
-              className="bg-transparent text-white outline-none cursor-pointer font-mono font-medium"
+              className="bg-transparent text-white outline-none cursor-pointer font-mono font-medium text-[11px]"
             >
               <option value={0.5} className="bg-slate-800">0.5x</option>
               <option value={1} className="bg-slate-800">1.0x</option>
@@ -141,7 +141,7 @@ export const TimelineController: React.FC<TimelineProps> = ({
         </div>
 
         {/* Elapsed / Total Time */}
-        <div className="font-mono text-sm tracking-wider font-semibold text-slate-200 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700">
+        <div className="font-mono text-xs tracking-wider font-semibold text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-700">
           <span className="text-cyan-400">{formatTime(currentTime)}</span>
           <span className="text-slate-500 mx-1.5">/</span>
           <span>{formatTime(duration)}</span>

@@ -22,6 +22,11 @@ class EventMarker(BaseModel):
     py: float
     elevation: float
     loot_rarity: Optional[str] = Field(None, description="Common, Rare, Epic, Legendary")
+    killer_id: Optional[str] = None
+    killer_is_bot: Optional[bool] = None
+    victim_id: Optional[str] = None
+    victim_is_bot: Optional[bool] = None
+    distance_meters: Optional[float] = None
 
 class CombatEngagement(BaseModel):
     t: float

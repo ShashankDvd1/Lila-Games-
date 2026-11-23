@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { SurvivalCurvePoint } from '../types/telemetry';
 
 interface SurvivalCurveGraphProps {
@@ -14,30 +14,35 @@ export const SurvivalCurveGraph: React.FC<SurvivalCurveGraphProps> = ({
   duration,
   onSeek
 }) => {
-  if (!data || data.length === 0) return null;
-
-  const maxTotal = Math.max(...data.map(d => d.total_alive), 1);
   const width = 640;
   const height = 75;
   const padding = 15;
 
+  const { totalPath, humansPath, botsPath } = useMemo(() => {
+    if (!data || data.length === 0) return { totalPath: '', humansPath: '', botsPath: '' };
+    const maxTotal = Math.max(...data.map(d => d.total_alive), 1);
+    const getX = (t: number) => padding + (t / Math.max(duration, 1)) * (width - 2 * padding);
+    const getY = (count: number) => height - padding - (count / maxTotal) * (height - 2 * padding);
+
+    const tp = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.t).toFixed(1)} ${getY(d.total_alive).toFixed(1)}`).join(' ');
+    const hp = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.t).toFixed(1)} ${getY(d.alive_humans).toFixed(1)}`).join(' ');
+    const bp = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.t).toFixed(1)} ${getY(d.alive_bots).toFixed(1)}`).join(' ');
+
+    return { totalPath: tp, humansPath: hp, botsPath: bp };
+  }, [data, duration]);
+
+  if (!data || data.length === 0) return null;
+
   const getX = (t: number) => padding + (t / Math.max(duration, 1)) * (width - 2 * padding);
-  const getY = (count: number) => height - padding - (count / maxTotal) * (height - 2 * padding);
-
-  // Generate SVG path for total alive
-  const totalPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.t).toFixed(1)} ${getY(d.total_alive).toFixed(1)}`).join(' ');
-  const humansPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.t).toFixed(1)} ${getY(d.alive_humans).toFixed(1)}`).join(' ');
-  const botsPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(d.t).toFixed(1)} ${getY(d.alive_bots).toFixed(1)}`).join(' ');
-
   const currentX = getX(currentTime);
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 shadow-lg">
-      <div className="flex items-center justify-between text-[11px] mb-1 px-1">
+    <div className="bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5 shadow-lg">
+      <div className="flex items-center justify-between text-[10px] mb-0.5 px-0.5">
         <span className="font-semibold text-slate-300 flex items-center gap-1.5">
           📈 Player Survivorship Cohort Decay
         </span>
-        <div className="flex items-center gap-3 text-[10px]">
+        <div className="flex items-center gap-3 text-[9px]">
           <span className="flex items-center gap-1 text-cyan-400">
             <span className="w-2 h-0.5 bg-cyan-400 inline-block"></span> Humans
           </span>
@@ -55,7 +60,7 @@ export const SurvivalCurveGraph: React.FC<SurvivalCurveGraphProps> = ({
         const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         onSeek(clickRatio * duration);
       }}>
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-16">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-10">
           {/* Grid lines */}
           <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#334155" strokeWidth="0.8" />
           <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#334155" strokeWidth="0.8" strokeDasharray="2,2" />

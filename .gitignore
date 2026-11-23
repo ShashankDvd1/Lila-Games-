@@ -35,3 +35,13 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Test artifacts & scratch scripts
+*.png
+test_screenshots/
+frontend/test_screenshots/
+test_*.py
+backend/check_*.py
+backend/query_*.py
+backend/test_*.py
+

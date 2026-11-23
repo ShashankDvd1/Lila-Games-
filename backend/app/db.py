@@ -1,6 +1,7 @@
 import duckdb
 import os
 import math
+import threading
 from typing import List, Dict, Any, Optional
 from app.config import DATA_DIR, MAP_CONFIGS
 from app.coordinates import world_to_pixel
@@ -28,10 +29,19 @@ def assign_loot_rarity(x: float, y: float, z: float) -> str:
 
 class TelemetryDB:
     def __init__(self, data_dir: str = DATA_DIR):
+        self.data_dir = data_dir
         self.con = duckdb.connect(database=":memory:")
-        parquet_glob = os.path.join(data_dir, "*", "*.nakama-0").replace("\\", "/")
-        
+        self.lock = threading.RLock()
+        self.match_cache: Dict[str, Any] = {}
+        self.heatmap_cache: Dict[str, Any] = {}
+        self.macro_cache: Dict[str, Any] = {}
+        self._init_tables()
+
+    def _init_tables(self, custom_glob: Optional[str] = None):
+        parquet_glob = custom_glob or os.path.join(self.data_dir, "*", "*.nakama-0").replace("\\", "/")
         print(f"Loading DuckDB telemetry table from {parquet_glob}...")
+        self.con.execute("DROP TABLE IF EXISTS telemetry")
+        self.con.execute("DROP TABLE IF EXISTS matches_summary")
         self.con.execute(f"""
             CREATE TABLE telemetry AS 
             SELECT 
@@ -70,19 +80,66 @@ class TelemetryDB:
         """)
         print("DuckDB in-memory telemetry table, indexes, and summary cache initialized.")
 
-    def get_cursor(self):
-        """Returns an isolated DuckDB cursor for thread-safe concurrent queries."""
-        return self.con.cursor()
+    def reload_data(self, custom_glob: Optional[str] = None) -> Dict[str, Any]:
+        with self.lock:
+            self.match_cache.clear()
+            self.heatmap_cache.clear()
+            self.macro_cache.clear()
+            self._init_tables(custom_glob)
+            return self.get_dataset_info()
+
+    def get_dataset_info(self) -> Dict[str, Any]:
+        with self.lock:
+            partitions = self.con.execute("""
+                SELECT 
+                    date_folder as date,
+                    COUNT(DISTINCT match_id) as match_count,
+                    COUNT(DISTINCT user_id) as player_count,
+                    COUNT(*) as event_count,
+                    COUNT(DISTINCT map_id) as map_count
+                FROM telemetry
+                GROUP BY date_folder
+                ORDER BY date_folder
+            """).df().to_dict(orient="records")
+            
+            maps_info = self.con.execute("""
+                SELECT 
+                    map_id,
+                    COUNT(DISTINCT match_id) as match_count,
+                    COUNT(*) as event_count
+                FROM telemetry
+                GROUP BY map_id
+                ORDER BY map_id
+            """).df().to_dict(orient="records")
+
+            stats = self.get_stats()
+            return {
+                "engine": "DuckDB Embedded Analytical Engine (In-Memory Columnar)",
+                "status": "ready",
+                "total_events": stats["total_events"],
+                "total_matches": stats["total_matches"],
+                "total_players": stats["total_players"],
+                "partitions": partitions,
+                "maps": maps_info,
+                "data_directory": self.data_dir
+            }
+
+    def query_df(self, query: str):
+        with self.lock:
+            return self.con.execute(query).df()
+
+    def query_one(self, query: str):
+        with self.lock:
+            return self.con.execute(query).fetchone()
 
     def get_stats(self) -> Dict[str, int]:
-        cur = self.get_cursor()
-        res = cur.execute("""
+        res = self.query_one("""
             SELECT 
                 COUNT(*) as total_events,
                 COUNT(DISTINCT match_id) as total_matches,
                 COUNT(DISTINCT user_id) as total_players
             FROM telemetry
-        """).fetchone()
+        """)
         return {
             "total_events": res[0],
             "total_matches": res[1],
@@ -104,11 +161,13 @@ class TelemetryDB:
             ORDER BY human_count DESC, total_events DESC
             LIMIT 200
         """
-        cur = self.get_cursor()
-        df = cur.execute(query).df()
+        df = self.query_df(query)
         return df.to_dict(orient="records")
 
     def get_match_payload(self, match_id: str) -> Optional[Dict[str, Any]]:
+        if match_id in self.match_cache:
+            return self.match_cache[match_id]
+
         query = f"""
             SELECT 
                 user_id,
@@ -122,8 +181,7 @@ class TelemetryDB:
             WHERE match_id = '{match_id}'
             ORDER BY raw_epoch ASC
         """
-        cur = self.get_cursor()
-        df = cur.execute(query).df()
+        df = self.query_df(query)
         if df.empty:
             return None
 
@@ -224,6 +282,40 @@ class TelemetryDB:
                     "distance_meters": dist_m
                 })
 
+        # Enrich discrete events with killer/victim identity for live event feed
+        for ev in events:
+            if ev["event"] in ("Kill", "BotKill"):
+                matching_eng = next((eng for eng in engagements if eng["killer_id"] == ev["user_id"] and abs(eng["t"] - ev["t"]) <= 0.5), None)
+                if matching_eng:
+                    ev["victim_id"] = matching_eng["victim_id"]
+                    ev["victim_is_bot"] = matching_eng["victim_is_bot"]
+                    ev["distance_meters"] = matching_eng["distance_meters"]
+                else:
+                    candidates = [d for d in deaths if abs(d["t"] - ev["t"]) <= 4.0 and d["user_id"] != ev["user_id"]]
+                    if candidates:
+                        ev["victim_id"] = candidates[0]["user_id"]
+                        ev["victim_is_bot"] = candidates[0]["is_bot"]
+                    elif ev["event"] == "BotKill":
+                        ev["victim_id"] = "AI Patrol Bot"
+                        ev["victim_is_bot"] = True
+            elif ev["event"] in ("Killed", "BotKilled"):
+                matching_eng = next((eng for eng in engagements if eng["victim_id"] == ev["user_id"] and abs(eng["t"] - ev["t"]) <= 0.5), None)
+                if matching_eng:
+                    ev["killer_id"] = matching_eng["killer_id"]
+                    ev["killer_is_bot"] = matching_eng["killer_is_bot"]
+                    ev["distance_meters"] = matching_eng["distance_meters"]
+                else:
+                    candidates = [k for k in kills if abs(k["t"] - ev["t"]) <= 4.0 and k["user_id"] != ev["user_id"]]
+                    if candidates:
+                        ev["killer_id"] = candidates[0]["user_id"]
+                        ev["killer_is_bot"] = candidates[0]["is_bot"]
+                    elif ev["event"] == "BotKilled":
+                        ev["killer_id"] = "AI Patrol Bot"
+                        ev["killer_is_bot"] = True
+            elif ev["event"] == "KilledByStorm":
+                ev["killer_id"] = "Hazard Storm"
+                ev["killer_is_bot"] = True
+
         # 2. Compute Survival Decay Curve (player cohort remaining over match time steps)
         survival_curve: List[Dict[str, Any]] = []
         time_step = max(10.0, duration / 30.0) if duration > 0 else 10.0
@@ -316,7 +408,7 @@ class TelemetryDB:
                 "radius_px": round(rad_px, 1)
             })
 
-        return {
+        payload = {
             "match_id": match_id,
             "map_id": map_id,
             "date": date_folder,
@@ -333,8 +425,14 @@ class TelemetryDB:
             "extractions": extractions_data,
             "elevation_bounds": map_cfg.get("elevation_bounds", {"min": 0.0, "max": 200.0})
         }
+        self.match_cache[match_id] = payload
+        return payload
 
     def get_heatmap_points(self, map_id: str, mode: str) -> List[Dict[str, Any]]:
+        cache_key = f"{map_id}_{mode}"
+        if cache_key in self.heatmap_cache:
+            return self.heatmap_cache[cache_key]
+
         if mode == "KillZones":
             event_filter = "event_str IN ('Kill', 'BotKill')"
         elif mode == "DeathZones":
@@ -349,8 +447,7 @@ class TelemetryDB:
             GROUP BY round(x, 0), round(z, 0), x, z
             LIMIT 5000
         """
-        cur = self.get_cursor()
-        df = cur.execute(query).df()
+        df = self.query_df(query)
         
         points = []
         for _, row in df.iterrows():
@@ -360,10 +457,15 @@ class TelemetryDB:
                 "py": py,
                 "weight": int(row["weight"])
             })
+        self.heatmap_cache[cache_key] = points
         return points
 
     def get_macro_paths(self, map_id: str, limit_matches: int = 25) -> List[Dict[str, Any]]:
         """Multi-match macro aggregate flow river paths for Analytics."""
+        cache_key = f"{map_id}_{limit_matches}"
+        if cache_key in self.macro_cache:
+            return self.macro_cache[cache_key]
+
         query = f"""
             WITH sample_matches AS (
                 SELECT DISTINCT match_id 
@@ -378,8 +480,7 @@ class TelemetryDB:
             ORDER BY user_id, raw_epoch ASC
             LIMIT 4000
         """
-        cur = self.get_cursor()
-        df = cur.execute(query).df()
+        df = self.query_df(query)
         grouped: Dict[str, Any] = {}
         for _, row in df.iterrows():
             uid = str(row["user_id"])
@@ -391,4 +492,6 @@ class TelemetryDB:
                 }
             px, py = world_to_pixel(row["x"], row["z"], map_id)
             grouped[uid]["points"].append([round(px, 1), round(py, 1)])
-        return list(grouped.values())
+        res = list(grouped.values())
+        self.macro_cache[cache_key] = res
+        return res

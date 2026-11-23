@@ -1,7 +1,10 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List, Dict, Any
+import os
+import shutil
 from app.db import TelemetryDB
+from app.config import DATA_DIR
 from app.models import MatchSummary, MatchPayload, HeatmapResponse, HealthResponse
 
 app = FastAPI(
@@ -66,3 +69,32 @@ def get_macro_paths(
 ):
     """Returns multi-match macro trajectories for cohort flow visualization."""
     return db.get_macro_paths(map_id=map_id, limit_matches=limit)
+
+@app.get("/api/dataset/info")
+def get_dataset_info():
+    """Returns current DuckDB telemetry dataset statistics, date partitions, and record counts."""
+    return db.get_dataset_info()
+
+@app.post("/api/dataset/reload")
+def reload_dataset():
+    """Triggers in-memory DuckDB re-scan and index rebuild across all parquet files."""
+    return db.reload_data()
+
+@app.post("/api/dataset/upload")
+async def upload_dataset_file(file: UploadFile = File(...), date_folder: str = "February_Upload"):
+    """Accepts uploaded parquet or .nakama-0 files and loads them dynamically into DuckDB."""
+    target_dir = os.path.join(DATA_DIR, date_folder)
+    os.makedirs(target_dir, exist_ok=True)
+    target_path = os.path.join(target_dir, file.filename)
+    
+    with open(target_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Reload DuckDB with new uploaded file
+    info = db.reload_data()
+    return {
+        "status": "success",
+        "filename": file.filename,
+        "date_folder": date_folder,
+        "dataset_info": info
+    }

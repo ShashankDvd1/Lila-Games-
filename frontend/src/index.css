@@ -5,6 +5,152 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #0f172a;
+  background-color: #020617;
   color: #f8fafc;
+  overflow-x: hidden;
+}
+
+/* Fix Leaflet default container white/grey background to modern dark tactical grid */
+.leaflet-container {
+  background-color: #020617 !important;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.3) 0%, rgba(2, 6, 23, 0.95) 100%),
+    linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 32px 32px, 32px 32px !important;
+  outline: none !important;
+  font-family: inherit;
+}
+
+.leaflet-container:focus {
+  outline: none !important;
+}
+
+/* Glassmorphic Tactical Dark Popups */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(51, 65, 85, 0.8) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(8px);
+}
+
+.leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95) !important;
+}
+
+/* Human Player Animated Radar Pulse Beacon */
+@keyframes radarPing {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.human-radar-ping {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #22d3ee;
+  background: rgba(34, 211, 238, 0.25);
+  animation: radarPing 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Elimination Shockwave Ripple & Blast Keyframes */
+@keyframes deathShockwave {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+    border-color: #f43f5e;
+  }
+  60% {
+    opacity: 0.7;
+    border-color: #ef4444;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+    border-color: #991b1b;
+  }
+}
+
+@keyframes killBlastRing {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.95;
+    background: rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    opacity: 0.45;
+    background: rgba(249, 115, 22, 0.35);
+  }
+  100% {
+    transform: scale(2.0);
+    opacity: 0;
+    background: transparent;
+  }
+}
+
+@keyframes skullPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.9));
+  }
+  50% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 14px rgba(244, 63, 94, 1));
+  }
+}
+
+@keyframes eliminatedGlow {
+  0%, 100% {
+    opacity: 0.6;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    opacity: 0.95;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+  }
+}
+
+.elimination-shockwave {
+  position: absolute;
+  top: -24px;
+  left: -24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 3px solid #ef4444;
+  animation: deathShockwave 1.5s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+  pointer-events: none;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.9);
+}
+
+.elimination-blast-ring {
+  position: absolute;
+  top: -14px;
+  left: -14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  animation: killBlastRing 1.5s cubic-bezier(0.2, 0.7, 0.4, 1) infinite;
+  pointer-events: none;
+}
+
+.elimination-skull-core {
+  animation: skullPulse 1.2s ease-in-out infinite;
+}
+
+.eliminated-tombstone {
+  animation: eliminatedGlow 2.5s ease-in-out infinite;
 }

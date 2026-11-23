@@ -3,16 +3,17 @@ import { fetchMatches, fetchMatch, fetchHeatmap, fetchMacroPaths } from './servi
 import type { MatchSummary, MatchPayload, HeatmapPoint, MacroPlayerPath } from './types/telemetry';
 import { FilterBar } from './components/FilterBar';
 import { MapViewport } from './components/MapViewport';
-import { HeatmapLayer } from './components/HeatmapLayer';
 import { TimelineController } from './components/TimelineController';
 import { InspectorHUD } from './components/InspectorHUD';
 import { SurvivalCurveGraph } from './components/SurvivalCurveGraph';
 import { ColdStartBanner } from './components/ColdStartBanner';
+import { DataLoaderModal } from './components/DataLoaderModal';
 
 export const App: React.FC = () => {
   // Parsing initial query parameters for session deep-linking
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
 
+  const [isDataLoaderOpen, setIsDataLoaderOpen] = useState<boolean>(false);
   const [dates] = useState<string[]>([
     'February_10',
     'February_11',
@@ -48,7 +49,7 @@ export const App: React.FC = () => {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   // Real-time Cursor Coordinates
-  const [cursorWorld] = useState<{ x: number; z: number; px: number; py: number } | null>(null);
+  const [cursorWorld, setCursorWorld] = useState<{ x: number; z: number; px: number; py: number } | null>(null);
 
   // Toast Notification for Deep-Link Sharing
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -72,19 +73,23 @@ export const App: React.FC = () => {
     setLayerFilters(prev => ({ ...prev, [layerKey]: !prev[layerKey] }));
   };
 
-  // URL Deep-Linking: Synchronize URL query params on significant state changes
+  // URL Deep-Linking: Synchronize URL query params on significant state changes (debounced to avoid 60fps history thrashes)
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (selectedDate) params.set('date', selectedDate);
-    if (selectedMap) params.set('map', selectedMap);
-    if (selectedMatch) params.set('match', selectedMatch);
-    if (showHeatmap) params.set('heatmap', '1');
-    if (heatmapMode !== 'KillZones') params.set('mode', heatmapMode);
-    if (currentTime > 0) params.set('t', Math.round(currentTime).toString());
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (selectedDate) params.set('date', selectedDate);
+      if (selectedMap) params.set('map', selectedMap);
+      if (selectedMatch) params.set('match', selectedMatch);
+      if (showHeatmap) params.set('heatmap', '1');
+      if (heatmapMode !== 'KillZones') params.set('mode', heatmapMode);
+      if (currentTime > 0) params.set('t', Math.round(currentTime).toString());
 
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, '', newUrl);
-  }, [selectedDate, selectedMap, selectedMatch, showHeatmap, heatmapMode, currentTime]);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, '', newUrl);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [selectedDate, selectedMap, selectedMatch, showHeatmap, heatmapMode, Math.round(currentTime)]);
 
   // Copy Shareable Deep Link
   const handleCopyDeepLink = () => {
@@ -106,9 +111,10 @@ export const App: React.FC = () => {
       setMatches(matchSummaries);
 
       if (matchSummaries.length > 0) {
+        const preferredMatch = matchSummaries.find(m => m.human_count > 0) || matchSummaries[0];
         const targetMatchId = selectedMatch && matchSummaries.some(m => m.match_id === selectedMatch)
           ? selectedMatch
-          : matchSummaries[0].match_id;
+          : preferredMatch.match_id;
 
         setSelectedMatch(targetMatchId);
         const payload = await fetchMatch(targetMatchId);
@@ -199,31 +205,31 @@ export const App: React.FC = () => {
       )}
 
       {/* Main Studio Navigation Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+      <header className="flex items-center justify-between px-6 py-2 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-cyan-500/20">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center font-black text-black text-xs shadow-lg shadow-cyan-500/20">
             L
           </div>
           <div>
-            <h1 className="text-base font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+            <h1 className="text-sm font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
               LILA BLACK Studio
             </h1>
-            <p className="text-[10px] text-slate-400 font-mono">
+            <p className="text-[9px] text-slate-400 font-mono">
               Spatial Telemetry & Level Design Intelligence Suite
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-mono text-[11px]">89,104 Events | 796 Matches</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-mono text-[10px]">89,104 Events | 796 Matches</span>
           </div>
         </div>
       </header>
 
       {/* Primary Layout */}
-      <main className="flex-1 flex flex-col p-4 gap-3 max-w-[1720px] w-full mx-auto">
+      <main className="flex-1 flex flex-col p-3 gap-2.5 max-w-[1720px] w-full mx-auto">
         {/* Triple-Tier Filter & Feature Bar */}
         <FilterBar
           dates={dates}
@@ -245,12 +251,13 @@ export const App: React.FC = () => {
           onElevationChange={setElevationRange}
           onToggleLayer={toggleLayer}
           onCopyDeepLink={handleCopyDeepLink}
+          onOpenDataLoader={() => setIsDataLoaderOpen(true)}
         />
 
-        {/* Viewport Center & Inspector Sidebar */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-3 min-h-[720px]">
-          {/* Spatial Viewport & Overlays */}
-          <div className="flex-1 relative flex flex-col rounded-2xl overflow-hidden border border-slate-800/80 shadow-2xl bg-slate-900/50">
+        {/* Viewport Center & Inspector Dashboard */}
+        <div className="flex flex-col lg:flex-row gap-3.5 items-start">
+          {/* Spatial Viewport: Square 1:1 matching the 1024x1024 Minimap with 0 Black Bars */}
+          <div className="w-full lg:w-[540px] xl:w-[560px] aspect-square shrink-0">
             <MapViewport
               mapId={selectedMap}
               players={matchData?.players || []}
@@ -264,30 +271,28 @@ export const App: React.FC = () => {
               selectedPlayerId={selectedPlayerId}
               elevationRange={elevationRange}
               layerFilters={layerFilters}
+              showHeatmap={showHeatmap}
+              heatmapMode={heatmapMode}
+              heatmapPoints={heatmapPoints}
+              onCursorMove={setCursorWorld}
+              onToggleLayer={toggleLayer}
             />
-
-            {/* Heatmap GPU Overlay */}
-            {showHeatmap && (
-              <HeatmapLayer
-                points={heatmapPoints}
-                mode={heatmapMode as 'KillZones' | 'DeathZones' | 'Traffic'}
-                opacity={0.8}
-              />
-            )}
           </div>
 
-          {/* Right Inspector & POI Analytics HUD */}
-          <InspectorHUD
-            mapId={selectedMap}
-            duration={matchDuration}
-            players={matchData?.players || []}
-            events={matchData?.events || []}
-            pois={matchData?.pois || []}
-            currentTime={currentTime}
-            selectedPlayerId={selectedPlayerId}
-            onSelectPlayer={setSelectedPlayerId}
-            cursorWorld={cursorWorld}
-          />
+          {/* Right Inspector & Level Design Analytics Dashboard */}
+          <div className="flex-1 w-full min-w-0">
+            <InspectorHUD
+              mapId={selectedMap}
+              duration={matchDuration}
+              players={matchData?.players || []}
+              events={matchData?.events || []}
+              pois={matchData?.pois || []}
+              currentTime={currentTime}
+              selectedPlayerId={selectedPlayerId}
+              onSelectPlayer={setSelectedPlayerId}
+              cursorWorld={cursorWorld}
+            />
+          </div>
         </div>
 
         {/* Bottom Timeline, Playback & Survivorship Curve */}
@@ -311,6 +316,13 @@ export const App: React.FC = () => {
           />
         </div>
       </main>
+
+      {/* Parquet Data Loader & Parser Modal */}
+      <DataLoaderModal
+        isOpen={isDataLoaderOpen}
+        onClose={() => setIsDataLoaderOpen(false)}
+        onDataReloaded={loadInitialData}
+      />
     </div>
   );
 };
