@@ -95,7 +95,7 @@ export const App: React.FC = () => {
   const handleCopyDeepLink = () => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(window.location.href).catch(() => {});
+        navigator.clipboard.writeText(window.location.href).catch(() => { });
       }
     } catch {
       // Fallback in headless or restricted browser environments
@@ -208,8 +208,8 @@ export const App: React.FC = () => {
       const killer = deathEvent.event === 'KilledByStorm'
         ? 'Storm Barrier'
         : deathEvent.killer_id
-        ? `${deathEvent.killer_is_bot ? 'Bot' : 'Player'} (${deathEvent.killer_id.slice(0, 6)})`
-        : 'Combat';
+          ? `${deathEvent.killer_is_bot ? 'Bot' : 'Player'} (${deathEvent.killer_id.slice(0, 6)})`
+          : 'Combat';
       return {
         status: 'DEFEAT' as const,
         time: deathEvent.t,

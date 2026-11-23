@@ -200,9 +200,9 @@ const createPlayerHeadIcon = (
   });
 };
 
-const createExtractionIcon = (name: string, isNearPlayer: boolean = false) => L.divIcon({
-  className: 'extraction-marker',
-  html: `
+  const createExtractionIcon = (name: string, isNearPlayer: boolean = false) => L.divIcon({
+    className: 'extraction-marker',
+    html: `
     <div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
       <div class="extraction-beacon-radar" style="width: 52px; height: 52px;"></div>
       <div style="
@@ -228,13 +228,13 @@ const createExtractionIcon = (name: string, isNearPlayer: boolean = false) => L.
     </div>
   `,
   iconSize: [110, 32],
-  iconAnchor: [55, 16]
-});
+    iconAnchor: [55, 16]
+  });
 
-// Win Outcome Marker (Celebratory Extraction Point)
-const createVictoryOutcomeIcon = (timeStr: string, reason: string) => L.divIcon({
-  className: 'victory-outcome-marker',
-  html: `
+  // Win Outcome Marker (Celebratory Extraction Point)
+  const createVictoryOutcomeIcon = (timeStr: string, reason: string) => L.divIcon({
+    className: 'victory-outcome-marker',
+    html: `
     <div class="victory-outcome-pulse" style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
       <div style="
         background: radial-gradient(circle, #fbbf24 0%, #d97706 70%, #92400e 100%);
@@ -270,14 +270,14 @@ const createVictoryOutcomeIcon = (timeStr: string, reason: string) => L.divIcon(
       </div>
     </div>
   `,
-  iconSize: [140, 65],
-  iconAnchor: [70, 20]
-});
+    iconSize: [140, 65],
+    iconAnchor: [70, 20]
+  });
 
-// Defeat Outcome Marker (Eliminated in Action)
-const createDefeatOutcomeIcon = (timeStr: string, killerInfo: string) => L.divIcon({
-  className: 'defeat-outcome-marker',
-  html: `
+  // Defeat Outcome Marker (Eliminated in Action)
+  const createDefeatOutcomeIcon = (timeStr: string, killerInfo: string) => L.divIcon({
+    className: 'defeat-outcome-marker',
+    html: `
     <div class="defeat-outcome-pulse" style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; z-index: 3000;">
       <div style="
         background: radial-gradient(circle, #ef4444 0%, #991b1b 70%, #450a0a 100%);
@@ -313,23 +313,23 @@ const createDefeatOutcomeIcon = (timeStr: string, killerInfo: string) => L.divIc
       </div>
     </div>
   `,
-  iconSize: [140, 65],
-  iconAnchor: [70, 20]
-});
+    iconSize: [140, 65],
+    iconAnchor: [70, 20]
+  });
 
-// Dramatic Elimination Shockwave Icon for active kill/death moments
-const createEliminationShockwaveIcon = (eventName: string, victimId?: string, isBot?: boolean) => {
-  const isStorm = eventName === 'KilledByStorm';
-  const label = isStorm
-    ? '⚡ STORM DEATH'
-    : (eventName.includes('Bot') ? '⚔️ BOT ELIMINATED' : '⚔️ COMBAT KILL');
-  const victimDisplay = victimId
-    ? `${isBot ? '🤖' : '👤'} ${victimId.length > 8 ? victimId.substring(0, 6) : victimId}`
-    : '';
+  // Dramatic Elimination Shockwave Icon for active kill/death moments
+  const createEliminationShockwaveIcon = (eventName: string, victimId?: string, isBot?: boolean) => {
+    const isStorm = eventName === 'KilledByStorm';
+    const label = isStorm
+      ? '⚡ STORM DEATH'
+      : (eventName.includes('Bot') ? '⚔️ BOT ELIMINATED' : '⚔️ COMBAT KILL');
+    const victimDisplay = victimId
+      ? `${isBot ? '🤖' : '👤'} ${victimId.length > 8 ? victimId.substring(0, 6) : victimId}`
+      : '';
 
-  return L.divIcon({
-    className: 'custom-elimination-burst',
-    html: `
+    return L.divIcon({
+      className: 'custom-elimination-burst',
+      html: `
       <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; pointer-events: none;">
         <div class="elimination-shockwave"></div>
         <div class="elimination-blast-ring"></div>
@@ -365,17 +365,17 @@ const createEliminationShockwaveIcon = (eventName: string, victimId?: string, is
         ">${label}${victimDisplay ? ` • ${victimDisplay}` : ''}</div>
       </div>
     `,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22]
-  });
-};
+      iconSize: [44, 44],
+      iconAnchor: [22, 22]
+    });
+  };
 
-// Distinct Eliminated Marker for defeated players
-const createEliminatedPlayerIcon = (isBot: boolean) => {
-  if (!isBot) {
-    return L.divIcon({
-      className: 'human-eliminated-marker',
-      html: `
+  // Distinct Eliminated Marker for defeated players
+  const createEliminatedPlayerIcon = (isBot: boolean) => {
+    if (!isBot) {
+      return L.divIcon({
+        className: 'human-eliminated-marker',
+        html: `
         <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
           <div class="eliminated-tombstone" style="
             background: rgba(15, 23, 42, 0.95);
@@ -408,14 +408,14 @@ const createEliminatedPlayerIcon = (isBot: boolean) => {
           ">💀 KIA</div>
         </div>
       `,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
-    });
-  }
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
+      });
+    }
 
-  return L.divIcon({
-    className: 'bot-eliminated-marker',
-    html: `
+    return L.divIcon({
+      className: 'bot-eliminated-marker',
+      html: `
       <div style="position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
         <div style="
           background: rgba(24, 24, 27, 0.9);
@@ -432,12 +432,12 @@ const createEliminatedPlayerIcon = (isBot: boolean) => {
         ">☠️</div>
       </div>
     `,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9]
-  });
-};
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+  };
 
-interface MapViewportProps {
+  interface MapViewportProps {
   mapId: string;
   players: PlayerJourney[];
   events: EventMarker[];
@@ -620,7 +620,7 @@ export const MapViewport: React.FC<MapViewportProps> = ({
 
         const filteredPoints = traj.slice(0, count)
           .filter(pt => pt.elevation >= elevationRange[0] && pt.elevation <= elevationRange[1]);
-        
+
         const points = filteredPoints.map(pt => [1024 - pt.py, pt.px] as [number, number]);
         const lastPt = filteredPoints.length > 0 ? filteredPoints[filteredPoints.length - 1] : null;
 
@@ -685,8 +685,8 @@ export const MapViewport: React.FC<MapViewportProps> = ({
       const killerInfo = deathEvent.event === 'KilledByStorm'
         ? 'Hazardous Storm'
         : deathEvent.killer_id
-        ? `${deathEvent.killer_is_bot ? '🤖 Bot' : '👤 Player'} ${deathEvent.killer_id.slice(0, 6)}`
-        : 'Combat Engagement';
+          ? `${deathEvent.killer_is_bot ? '🤖 Bot' : '👤 Player'} ${deathEvent.killer_id.slice(0, 6)}`
+          : 'Combat Engagement';
       const m = Math.floor(deathEvent.t / 60);
       const s = Math.floor(deathEvent.t % 60);
       const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
@@ -810,8 +810,8 @@ export const MapViewport: React.FC<MapViewportProps> = ({
 
         {/* 3. Extraction Zones */}
         {layerFilters.showExtractions && extractions.map(ext => {
-          const isNear = currentHumanPos 
-            ? Math.hypot(currentHumanPos[1] - ext.center_px, (1024 - currentHumanPos[0]) - ext.center_py) <= ext.radius_px * 2.2 
+          const isNear = currentHumanPos
+            ? Math.hypot(currentHumanPos[1] - ext.center_px, (1024 - currentHumanPos[0]) - ext.center_py) <= ext.radius_px * 2.2
             : false;
 
           return (
@@ -965,12 +965,12 @@ export const MapViewport: React.FC<MapViewportProps> = ({
           const icon = isElimMoment
             ? createEliminationShockwaveIcon(ev.event, ev.victim_id, ev.victim_is_bot)
             : isKill
-            ? createKillIcon()
-            : isKilled
-            ? createDeathIcon()
-            : isStorm
-            ? createStormDeathIcon()
-            : createLootIcon(ev.loot_rarity);
+              ? createKillIcon()
+              : isKilled
+                ? createDeathIcon()
+                : isStorm
+                  ? createStormDeathIcon()
+                  : createLootIcon(ev.loot_rarity);
 
           return (
             <Marker
@@ -1014,48 +1014,48 @@ export const MapViewport: React.FC<MapViewportProps> = ({
           (humanOutcome.status === 'DEFEAT' && currentTime >= humanOutcome.time) ||
           (humanOutcome.status === 'VICTORY' && currentTime >= Math.max(0, humanOutcome.time - 25))
         ) && (
-          <Marker
-            position={humanOutcome.pos}
-            zIndexOffset={3800}
-            icon={
-              humanOutcome.status === 'VICTORY'
-                ? createVictoryOutcomeIcon(humanOutcome.timeStr, humanOutcome.reason)
-                : createDefeatOutcomeIcon(humanOutcome.timeStr, humanOutcome.killerInfo)
-            }
-          >
-            <Popup>
-              <div className="text-xs p-2 text-slate-100 min-w-[210px]">
-                <div className="flex items-center gap-1.5 font-bold text-sm border-b border-slate-700 pb-1.5">
-                  {humanOutcome.status === 'VICTORY' ? (
-                    <span className="text-emerald-400">🏆 MISSION SUCCESS (MATCH WON)</span>
-                  ) : (
-                    <span className="text-rose-400">💀 MISSION FAILED (K.I.A.)</span>
-                  )}
-                </div>
-                <div className="mt-2 space-y-1 text-[11px]">
-                  <p>
-                    <span className="text-slate-400">Event Time: </span>
-                    <span className="font-mono text-cyan-400 font-bold">{humanOutcome.timeStr}</span> ({Math.round(humanOutcome.time)}s)
-                  </p>
-                  <p>
-                    <span className="text-slate-400">Outcome Details: </span>
-                    <span className="font-semibold text-slate-200">{humanOutcome.reason}</span>
-                  </p>
-                  {humanOutcome.status === 'VICTORY' && humanOutcome.nearestExtName && (
+            <Marker
+              position={humanOutcome.pos}
+              zIndexOffset={3800}
+              icon={
+                humanOutcome.status === 'VICTORY'
+                  ? createVictoryOutcomeIcon(humanOutcome.timeStr, humanOutcome.reason)
+                  : createDefeatOutcomeIcon(humanOutcome.timeStr, humanOutcome.killerInfo)
+              }
+            >
+              <Popup>
+                <div className="text-xs p-2 text-slate-100 min-w-[210px]">
+                  <div className="flex items-center gap-1.5 font-bold text-sm border-b border-slate-700 pb-1.5">
+                    {humanOutcome.status === 'VICTORY' ? (
+                      <span className="text-emerald-400">🏆 MISSION SUCCESS (MATCH WON)</span>
+                    ) : (
+                      <span className="text-rose-400">💀 MISSION FAILED (K.I.A.)</span>
+                    )}
+                  </div>
+                  <div className="mt-2 space-y-1 text-[11px]">
                     <p>
-                      <span className="text-slate-400">Nearest Evac: </span>
-                      <span className="text-emerald-300 font-semibold">{humanOutcome.nearestExtName} ({humanOutcome.nearestDist}px)</span>
+                      <span className="text-slate-400">Event Time: </span>
+                      <span className="font-mono text-cyan-400 font-bold">{humanOutcome.timeStr}</span> ({Math.round(humanOutcome.time)}s)
                     </p>
-                  )}
-                  <p>
-                    <span className="text-slate-400">Elevation: </span>
-                    <span className="font-mono text-amber-300">{humanOutcome.elevation}m</span>
-                  </p>
+                    <p>
+                      <span className="text-slate-400">Outcome Details: </span>
+                      <span className="font-semibold text-slate-200">{humanOutcome.reason}</span>
+                    </p>
+                    {humanOutcome.status === 'VICTORY' && humanOutcome.nearestExtName && (
+                      <p>
+                        <span className="text-slate-400">Nearest Evac: </span>
+                        <span className="text-emerald-300 font-semibold">{humanOutcome.nearestExtName} ({humanOutcome.nearestDist}px)</span>
+                      </p>
+                    )}
+                    <p>
+                      <span className="text-slate-400">Elevation: </span>
+                      <span className="font-mono text-amber-300">{humanOutcome.elevation}m</span>
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </Popup>
-          </Marker>
-        )}
+              </Popup>
+            </Marker>
+          )}
       </MapContainer>
 
       {/* Floating Tactical Map Legend & Layer Controls */}
