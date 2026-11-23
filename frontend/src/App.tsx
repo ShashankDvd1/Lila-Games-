@@ -88,7 +88,13 @@ export const App: React.FC = () => {
 
   // Copy Shareable Deep Link
   const handleCopyDeepLink = () => {
-    navigator.clipboard.writeText(window.location.href);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(window.location.href).catch(() => {});
+      }
+    } catch {
+      // Fallback in headless or restricted browser environments
+    }
     setToastMessage('🔗 Session Deep-Link copied to clipboard!');
     setTimeout(() => setToastMessage(null), 3000);
   };

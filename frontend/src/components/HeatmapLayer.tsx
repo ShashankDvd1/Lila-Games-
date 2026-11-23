@@ -24,12 +24,22 @@ export const HeatmapLayer: React.FC<HeatmapLayerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!canvasRef.current || points.length === 0) return;
+    if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, 1024, 1024);
 
-    const heat = simpleheat(canvas);
+    if (points.length === 0) return;
+
+    // simpleheat can be an ES class or factory function
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const HeatConstructor = (simpleheat as any).default || simpleheat;
+    let heat: any;
+    try {
+      heat = new HeatConstructor(canvas);
+    } catch {
+      heat = HeatConstructor(canvas);
+    }
     const data = points.map(p => [p.px, p.py, p.weight]);
     heat.data(data);
     
